@@ -1,0 +1,2 @@
+class PlayerAction:
+    pass

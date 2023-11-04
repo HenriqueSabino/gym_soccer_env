@@ -1,0 +1,3 @@
+gymnasium
+PIL
+numpy
