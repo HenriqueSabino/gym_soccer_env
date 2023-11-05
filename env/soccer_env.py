@@ -41,18 +41,18 @@ class SoccerEnv(Env):
         self.observation_space = spaces.Dict({
             # "image": None, # Parte do AlphaZero
             "left_team": spaces.Box(
-                low=np.array([0, FIELD_WIDTH], dtype=np.float32),
-                high=np.array([0, FIELD_HEIGHT], dtype=np.float32),
+                low=np.array([0, 0], dtype=np.float32),
+                high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
                 dtype=np.float32,
             ),
             "right_team": spaces.Box(
-                low=np.array([0, FIELD_WIDTH], dtype=np.float32),
-                high=np.array([0, FIELD_HEIGHT], dtype=np.float32),
+                low=np.array([0, 0], dtype=np.float32),
+                high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
                 dtype=np.float32,
             ),
             "ball_position": spaces.Box(
-                low=np.array([0, FIELD_WIDTH], dtype=np.float32),
-                high=np.array([0, FIELD_HEIGHT], dtype=np.float32),
+                low=np.array([0, 0], dtype=np.float32),
+                high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
                 dtype=np.float32,
             )
         })
@@ -67,8 +67,8 @@ class SoccerEnv(Env):
 
         self.observation = {
             # "image": None, # TODO: Adaptar pro AlphaZero usando planes (2Darray de 0 e 1)
-            "left_team": self.players[:11],
-            "right_team": self.players[11:],
+            "left_team": self.all_start_positions[:11],
+            "right_team": self.all_start_positions[11:],
             "ball_position": np.array(POINTS["center"], dtype=np.float32),
         }
 
@@ -89,21 +89,27 @@ class SoccerEnv(Env):
 
     def step(self, action: int) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         # assert len(action) == 22
-
+        
         t_action = self.action_translator(action)
         direction = self.player_selector.direction
         team = self.player_selector.current_side
         player_name = self.player_selector.current_player_name
         
-        self.player_selector.current_player_name
-        self.player_names_mapping
-        
         obs_index = self.player_names_mapping[player_name]
         old_position = self.observation[team][obs_index]
+        # TODO: Verificar se está correto direction ficar -1 quando acion for 'up' ou 'down'
         new_position = old_position + t_action * PLAYER_VELOCITY * direction
+        new_position = np.clip(
+            new_position, 
+            self.observation_space[team].low, 
+            self.observation_space[team].high
+        )
         self.observation[team][obs_index] = new_position
         
-        self.player_selector.next() # Passa a vez pro próximo jogador
+        print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({obs_index}, {self.player_selector.index})")
+        
+        # Passa a vez pro próximo jogador atualizando player, team e direction
+        self.player_selector.next()
 
         #TODO: Implement how action alters the game state
         # # ta super bem explicado no link environment creation da farama
@@ -131,7 +137,7 @@ class SoccerEnv(Env):
             return np.column_stack((x, y))
         
         # First 11 players will be left side players and last 11 will be right side
-        self.players = random_coordinates_generator() # posições de todos os jogadores
+        self.all_start_positions = random_coordinates_generator() # posições de todos os jogadores
         self.player_names = ["player_" + str(r) for r in range(num_agents)]
         self.player_names_mapping = dict( # mapping agent_name to index of observation channel
             zip(self.player_names, list(range(11)) * 2)
@@ -147,15 +153,18 @@ class SoccerEnv(Env):
 
     def __initialize_render_function(self, render_mode: str = "humam") -> None:
 
-        def humam_render():
-            field_image = self.field_drawer.draw_field(self.players)
+        def human_render():
+            array_1 = self.observation["left_team"]
+            array_2 = self.observation["right_team"]
+            all_positions = np.concatenate([array_1, array_2], axis=0)
+            field_image = self.field_drawer.draw_field(all_positions)
             return field_image
         
         def rgb_array_render():
             pass # TODO: completar essa função pensando em como o AlphaZero usaria
 
         render_functions = {
-            "human": humam_render,
+            "human": human_render,
             "rgb_array": rgb_array_render 
         }
         self.render_function = render_functions[render_mode]

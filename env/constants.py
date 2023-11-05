@@ -7,7 +7,7 @@ WINDOW_SIZE = {'w': 120, 'h': 80} # Pixels in screen = 120 x 80
 FIELD_SIZE = {'w': 120, 'h': 80}
 FIELD_WIDTH = 120
 FIELD_HEIGHT = 80
-PLAYER_VELOCITY = 2.7
+PLAYER_VELOCITY = 2.7 +6.0
 # FIELD_MARGIN = { # Margin between the field rect and the window rect
 #     'w': WINDOW_SIZE['w']-FIELD_SIZE['w'] // 2,
 #     'h': WINDOW_SIZE['h']-FIELD_SIZE['h'] // 2

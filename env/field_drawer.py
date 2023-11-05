@@ -98,10 +98,9 @@ class FieldDrawer:
         ], width=self.border_size, fill="red")
 
         # Right goal
-
-        draw.rectangle(xy=[
-            (self.width - self.border_size / 2, self.height / 2 - outer_goal_height / 2),
-            (self.width - outer_goal_width - self.border_size / 2, self.height / 2 + outer_goal_height / 2)
+        draw.rectangle(xy=[ 
+            (self.width - outer_goal_width - self.border_size / 2, self.height / 2 - outer_goal_height / 2),
+            (self.width - self.border_size / 2, self.height / 2 + outer_goal_height / 2)
         ], width=self.border_size)
 
         draw.arc(xy=[
@@ -109,9 +108,9 @@ class FieldDrawer:
             (self.width - outer_goal_width + goal_decoration_radius + goal_decoration_radius * np.cos(np.pi / 3) - self.border_size, self.height / 2 + goal_decoration_radius),
         ], start=120, end=240)
 
-        draw.rectangle(xy=[
-            (self.width - self.border_size / 2, self.height / 2 - inner_goal_height / 2),
-            (self.width - self.border_size / 2 - inner_goal_width, self.height / 2 + inner_goal_height / 2)
+        draw.rectangle(xy=[ 
+            (self.width - self.border_size / 2 - inner_goal_width, self.height / 2 - inner_goal_height / 2),
+            (self.width - self.border_size / 2, self.height / 2 + inner_goal_height / 2)
         ], width=self.border_size)
 
         draw.line(xy=[
