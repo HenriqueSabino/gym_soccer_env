@@ -1,14 +1,16 @@
 import numpy as np
 from PIL import Image, ImageDraw
 
+from env.constants import FIELD_WIDTH, FIELD_HEIGHT
+
 
 class FieldDrawer:
     def __init__(self, scale, border_size) -> None:
         self.scale = scale
         self.border_size = border_size
 
-        self.width = 120 * self.scale
-        self.height = 90 * self.scale
+        self.width = FIELD_WIDTH * self.scale
+        self.height = FIELD_HEIGHT * self.scale
         
     def draw_field(self, players: list):
 

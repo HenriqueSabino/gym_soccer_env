@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from player_action import PlayerAction
+from env.player_action import PlayerAction
 
 class ActionTranslator(ABC):
 
