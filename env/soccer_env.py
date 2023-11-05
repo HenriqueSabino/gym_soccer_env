@@ -5,6 +5,7 @@ from gymnasium import spaces
 from env.discrete_action_translator import DiscreteActionTranslator
 from env.player_selection import PlayerSelector
 from env.field_drawer import FieldDrawer
+from env.image_observation_builder import ImageObservationBuilder
 import numpy as np
 
 from env.constants import FIELD_WIDTH, FIELD_HEIGHT, PLAYER_VELOCITY, POINTS
@@ -15,7 +16,7 @@ class SoccerEnv(Env):
         "render_modes": ["human", "rgb_array"],
     }
 
-    def __init__(self, render_mode="human", action_format='discrete', render_scale=8) -> None:
+    def __init__(self, render_mode="human", action_format='discrete', observation_format='image', render_scale=8) -> None:
         super().__init__()
 
         self.render_mode = render_mode
@@ -27,6 +28,8 @@ class SoccerEnv(Env):
         self.__initialize_players()
         self.__initialize_action_translator(action_format)
         self.__initialize_render_function(render_mode)
+        self.__initialize_observation_builder(observation_format)
+
         self.player_selector = PlayerSelector(self.player_names)
 
         # TODO: verificar a definição de observaiton space e action space
@@ -65,12 +68,11 @@ class SoccerEnv(Env):
     def reset(self, seed=None):
         super().reset(seed=seed)
 
-        self.observation = {
-            # "image": None, # TODO: Adaptar pro AlphaZero usando planes (2Darray de 0 e 1)
-            "left_team": self.all_start_positions[:11],
-            "right_team": self.all_start_positions[11:],
-            "ball_position": np.array(POINTS["center"], dtype=np.float32),
-        }
+        self.observation = self.observation_builder.build_observation(
+            self.all_start_positions[:11],
+            self.all_start_positions[11:],
+            np.array(POINTS["center"], dtype=np.float32)
+        )
 
         self.rewards = {agent: 0 for agent in self.player_names}
         self._cumulative_rewards = {agent: 0 for agent in self.player_names}
@@ -171,3 +173,8 @@ class SoccerEnv(Env):
             "rgb_array": rgb_array_render 
         }
         self.render_function = render_functions[render_mode]
+
+
+    def __initialize_observation_builder(self, observation_format: str) -> None:
+        if observation_format == 'image':
+            self.observation_builder = ImageObservationBuilder()
