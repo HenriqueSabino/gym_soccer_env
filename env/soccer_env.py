@@ -15,7 +15,7 @@ class SoccerEnv(Env):
         "render_modes": ["human", "rgb_array"],
     }
 
-    def __init__(self, render_mode="humam", action_format='discrete', render_scale=8) -> None:
+    def __init__(self, render_mode="human", action_format='discrete', render_scale=8) -> None:
         super().__init__()
 
         self.render_mode = render_mode
@@ -154,10 +154,13 @@ class SoccerEnv(Env):
     def __initialize_render_function(self, render_mode: str = "humam") -> None:
 
         def human_render():
-            array_1 = self.observation["left_team"]
-            array_2 = self.observation["right_team"]
-            all_positions = np.concatenate([array_1, array_2], axis=0)
-            field_image = self.field_drawer.draw_field(all_positions)
+            left_team_positions = self.observation["left_team"]
+            right_team_positions = self.observation["right_team"]
+            all_positions = np.concatenate([left_team_positions, right_team_positions], axis=0)
+
+            ball_position = self.observation["ball_position"]
+
+            field_image = self.field_drawer.draw_field(all_positions, ball_position)
             return field_image
         
         def rgb_array_render():

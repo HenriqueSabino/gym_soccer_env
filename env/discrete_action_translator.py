@@ -4,9 +4,7 @@ import numpy as np
 
 class DiscreteActionTranslator(ActionTranslator):
     
-    
-    @staticmethod
-    def translate_action(action) -> PlayerAction:
+    def translate_action(self, action, is_on_left_side: bool) -> PlayerAction:
         
         assert action in list(range(8)), "Action must be in [0,...,7]"
 
@@ -26,8 +24,19 @@ class DiscreteActionTranslator(ActionTranslator):
             12: None, # To be implemented in another week
         }
 
-        # TODO: Faltar implementar e retornar PlayerAction em vez de retornar um numpy array
+        direction = DiscreteActionTranslator.__normalize_direction(action_to_direction[action])
 
-        # return super().translate_action() pode apagar essa linha ? precisa chamer o super ?
-        return action_to_direction[action]
+        if not is_on_left_side:
+            direction[1] *= -1
+
+        playerAction = PlayerAction(direction)
+
+        return playerAction
+    
+    @staticmethod
+    def __normalize_direction(direction):
+        if np.all(direction, where=lambda x: x == 0):
+            return direction
+        
+        return direction / np.linalg.norm(direction)
         

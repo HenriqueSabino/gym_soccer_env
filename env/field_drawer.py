@@ -12,7 +12,7 @@ class FieldDrawer:
         self.width = FIELD_WIDTH * self.scale
         self.height = FIELD_HEIGHT * self.scale
         
-    def draw_field(self, players: list):
+    def draw_field(self, players: list, ball_position: list):
 
         assert len(players) == 22
 
@@ -25,6 +25,7 @@ class FieldDrawer:
         self.__draw_center_line(draw)
         self.__draw_goals(draw)
         self.__draw_players(draw, players)
+        self.__draw_ball(draw, ball_position)
 
         return field
 
@@ -134,3 +135,13 @@ class FieldDrawer:
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
                 (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
             ], fill="blue")
+    
+    def __draw_ball(self, draw: ImageDraw.ImageDraw, ball_position: list):
+        assert len(ball_position) == 2
+
+        ball_size = 0.5 * self.scale
+        
+        draw.ellipse(xy=[
+            (ball_position[0] * self.scale - ball_size, ball_position[1] * self.scale - ball_size),
+            (ball_position[0] * self.scale + ball_size, ball_position[1] * self.scale + ball_size)
+        ], fill="black")
