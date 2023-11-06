@@ -4,10 +4,11 @@ import numpy as np
 
 class DiscreteActionTranslator(ActionTranslator):
     
-    def translate_action(self, action, is_on_left_side: bool) -> PlayerAction:
+    @staticmethod
+    def translate_action(action) -> PlayerAction:
         
         assert action in list(range(8)), "Action must be in [0,...,7]"
-
+        
         action_to_direction = {
             0: np.array([1, 0]),  # Right (foward)
             1: np.array([-1, 0]), # Left (backward)
@@ -26,8 +27,8 @@ class DiscreteActionTranslator(ActionTranslator):
 
         direction = DiscreteActionTranslator.__normalize_direction(action_to_direction[action])
 
-        if not is_on_left_side:
-            direction[1] *= -1
+        # if not is_on_left_side:
+        #     direction[1] *= -1
 
         playerAction = PlayerAction(direction)
 

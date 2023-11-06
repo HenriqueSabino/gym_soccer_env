@@ -3,17 +3,21 @@ import env
 import random
 from PIL import Image, ImageDraw
 
-env = gym.make("Soccer-v0", render_mode="human")
+env = gym.make("Soccer-v0", render_mode="human", observation_format='dict')
 
 env.reset()
 
-env.render().show()
+img_start = env.render()
 
 actions = list(range(8))
-for _ in range(22):
-    env.step(random.choice(actions))
+for __ in range(1):
+    for _ in range(22):
+        env.step(random.choice(actions))
 
-env.render().show()
+img_end = env.render()
+
+img_start.show()
+img_end.show()
 
 print("✅ Successfully run. Remember to look warnings and PRINTS BETWEEN WARNINGS.")
 
