@@ -137,6 +137,7 @@ class FieldDrawer:
             ], fill="blue")
     
     def __draw_ball(self, draw: ImageDraw.ImageDraw, ball_position: list):
+        ball_position = ball_position[0]
         assert len(ball_position) == 2
 
         ball_size = 0.5 * self.scale
