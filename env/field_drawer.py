@@ -15,7 +15,6 @@ class FieldDrawer:
     def draw_field(self, players: list, ball_position: list):
 
         assert len(players) == 22
-
         field = Image.new("RGB", (self.width, self.height), "green")  # Green background for the field
 
         # Use PIL's drawing module to add field lines or other details
@@ -25,7 +24,7 @@ class FieldDrawer:
         self.__draw_center_line(draw)
         self.__draw_goals(draw)
         self.__draw_players(draw, players)
-        self.__draw_ball(draw, ball_position)
+        self.__draw_ball(draw, ball_position[0])
 
         return field
 
@@ -137,11 +136,10 @@ class FieldDrawer:
             ], fill="blue")
     
     def __draw_ball(self, draw: ImageDraw.ImageDraw, ball_position: list):
-        ball_position = ball_position[0]
+        #ball_position = ball_position[0]
         assert len(ball_position) == 2
 
         ball_size = 0.5 * self.scale
-        
         draw.ellipse(xy=[
             (ball_position[0] * self.scale - ball_size, ball_position[1] * self.scale - ball_size),
             (ball_position[0] * self.scale + ball_size, ball_position[1] * self.scale + ball_size)
