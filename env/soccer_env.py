@@ -131,8 +131,7 @@ class SoccerEnv(Env):
             new_position = np.clip(new_position, self.observation_space[team].low, self.observation_space[team].high)
             self.observation[team][obs_index] = new_position
             ball_pos = self.observation["ball_position"]
-        else:
-            
+        elif self.observation_type == 'image':
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
             self.all_coordinates[obs_index] = new_position
             ball_pos = self.all_coordinates[-1]
@@ -151,7 +150,11 @@ class SoccerEnv(Env):
                 self.player_selector._kickoff = True
                 self.player_selector._index = 10
                 print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
-
+            self.observation = self.observation_builder.build_observation(
+                self.all_coordinates[:11],
+                self.all_coordinates[11:22],
+                self.all_coordinates[-1]
+            )
         elif self.observation_type == 'dict':
 
             if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
@@ -226,8 +229,6 @@ class SoccerEnv(Env):
                 left_team_positions = self.all_coordinates[:11]
                 right_team_positions = self.all_coordinates[11:22]
                 ball_position = self.all_coordinates[-1:]
-                print("ball_position", ball_position)
-                print(len(ball_position))
                 field_image = self.field_drawer.draw_field(
                     list(left_team_positions) + list(right_team_positions), 
                     ball_position
