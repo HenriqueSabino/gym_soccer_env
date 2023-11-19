@@ -130,25 +130,24 @@ class SoccerEnv(Env):
         
         # [2] - Get select player to make action
         player_name, direction, _, team  = self.player_selector.get_info()
-        obs_index = self.player_name_to_obs_index[player_name]
-        if team != 'left_team':
-            obs_index=obs_index+11
+        obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
 
         # [3] - Apply action to selected player
-        old_position = self.all_coordinates[obs_index].copy()
+        old_position = self.all_coordinates[all_coordinates_index].copy()
         new_position = old_position + np.array(t_action.direction) * PLAYER_VELOCITY * direction
 
         if self.observation_type == 'dict':
             # For observation format 'dict', old_position is a 2D array
             new_position = np.clip(new_position, self.observation_space[team].low, self.observation_space[team].high)
-            self.observation[team][obs_index] = new_position
+            print("index", obs_team_index, " of ", team, self.observation[team])
+            self.observation[team][obs_team_index] = new_position
             ball_pos = self.observation["ball_position"]
         elif self.observation_type == 'image':
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            self.all_coordinates[obs_index] = new_position
+            self.all_coordinates[all_coordinates_index] = new_position
             ball_pos = self.all_coordinates[-1]
 
-        print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({obs_index}, {self.player_selector._index})")
+        print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
         
         # [4] - Change selected player
         self.player_selector.next_player()
@@ -203,8 +202,14 @@ class SoccerEnv(Env):
         # First 11 players will be left side players and last 11 will be right side
         self.all_coordinates = random_coordinates_generator() # posições de todos os jogadores
         self.player_names = ["player_" + str(r) for r in range(num_agents)]
-        self.player_name_to_obs_index = dict( # mapping agent_name to index of observation channel
-            zip(self.player_names, list(range(11)) * 2)
+        
+        # mapping agent_name to index of observation channel
+        indexes = list(zip(
+            list(range(11)) * 2, # Use in -> observation[team][index]
+            list(range(22))      # Use in -> self.all_coordinates[index]
+        ))
+        self.player_name_to_obs_index = dict( 
+            zip(self.player_names, indexes)
         )
 
 
@@ -277,14 +282,15 @@ class SoccerEnv(Env):
 
     @staticmethod
     def apply_action_to_right_player(action, old_position):
-
+        # To be use later in a refactor (don't delete yet)
         new_position = old_position + action * PLAYER_VELOCITY * [-1, 1]
-
+        return new_position
 
     @staticmethod
     def apply_action_to_left_player(action, old_position):
-
+        # To be use later in a refactor (don't delete yet)
         new_position = old_position + action * PLAYER_VELOCITY
+        return new_position
 
 
     @staticmethod

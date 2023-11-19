@@ -16,8 +16,8 @@ for __ in range(1):
 
 img_end = env.render()
 
-img_start.show()
-img_end.show()
+# img_start.show()
+# img_end.show()
 
 print("✅ Successfully run. Remember to look warnings and PRINTS BETWEEN WARNINGS.")
 

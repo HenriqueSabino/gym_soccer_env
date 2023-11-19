@@ -32,7 +32,7 @@ class PlayerSelector:
         )
 
 
-    def next_player(self, kickoff: bool) -> str:
+    def next_player(self) -> str:
         """
         Pass the turn to next player and updates the 
         internal _current_player_name, _is_left_team and _direction info.
