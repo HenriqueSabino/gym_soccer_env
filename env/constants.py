@@ -7,7 +7,7 @@ WINDOW_SIZE = {'w': 120, 'h': 80} # Pixels in screen = 120 x 80
 FIELD_SIZE = {'w': 120, 'h': 80}
 FIELD_WIDTH = 120
 FIELD_HEIGHT = 80
-PLAYER_VELOCITY = 2.7 +6.0
+PLAYER_VELOCITY = 2.7
 POINTS = {
     "center": (WINDOW_SIZE['w'] // 2, WINDOW_SIZE['h'] // 2),
     "top_left": (0,0), # Origin

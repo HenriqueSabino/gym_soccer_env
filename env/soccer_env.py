@@ -48,7 +48,7 @@ class SoccerEnv(Env):
         # # https://pettingzoo.farama.org/content/environment_creation/
         # # https://www.gymlibrary.dev/content/environment_creation/
         # # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
-        self.action_space = spaces.Discrete(8)
+        self.action_space = spaces.Discrete(13)
         self.observation_space = self._get_observation_space()
 
 
@@ -105,24 +105,36 @@ class SoccerEnv(Env):
         self.truncations = {agent: False for agent in self.player_names}
         self.infos = {agent: {} for agent in self.player_names}
 
+        self.kickoff = False
+
         return self.observation, self.infos
 
 
     def step(self, action: int) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
-        
+        """
+        overview:
+        [1] - Translate action
+        [2] - Get select player to make action
+        [3] - Apply action to selected player
+        [4] - Change selected player
+        [5] - Check kickoff logic
+        """
         # If needed -> References to see step() method:
         # https://pettingzoo.farama.org/content/environment_creation/
         # https://www.gymlibrary.dev/content/environment_creation/
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
-        
-        # assert len(action) == 22
 
+
+        # [1] - Translate action
         t_action = self.action_translator(action)
         
+        # [2] - Get select player to make action
         player_name, direction, _, team  = self.player_selector.get_info()
         obs_index = self.player_name_to_obs_index[player_name]
         if team != 'left_team':
             obs_index=obs_index+11
+
+        # [3] - Apply action to selected player
         old_position = self.all_coordinates[obs_index].copy()
         new_position = old_position + np.array(t_action.direction) * PLAYER_VELOCITY * direction
 
@@ -137,18 +149,22 @@ class SoccerEnv(Env):
             ball_pos = self.all_coordinates[-1]
 
         print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({obs_index}, {self.player_selector._index})")
+        
+        # [4] - Change selected player
+        self.player_selector.next_player()
 
+        # [5] - Check kickoff logic
         if self.observation_type == 'image':
             if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
             and ball_pos not in self.all_coordinates[:11] \
             and ball_pos not in self.all_coordinates[11:22]\
-            and self.player_selector._kickoff == False:
+            and self.kickoff == False:
                     
                 # Autograb the ball if near enough and 
                 # no player is in the same pos of the ball 
                 self.all_coordinates[-1] = new_position
-                self.player_selector._kickoff = True
-                self.player_selector._index = 10
+                self.kickoff = True
+                self.player_selector.change_selector_logic()
                 print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
             self.observation = self.observation_builder.build_observation(
                 self.all_coordinates[:11],
@@ -160,16 +176,14 @@ class SoccerEnv(Env):
             if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
                 and ball_pos not in self.observation["left_team"] \
                 and ball_pos not in self.observation["right_team"]\
-                and self.player_selector._kickoff == False:
+                and self.kickoff == False:
 
                 # Autograb the ball if near enough and 
                 # no player is in the same pos of the ball 
                 self.observation["ball_position"] = new_position
-                self.player_selector._kickoff = True
-                self.player_selector._index = 10
+                self.kickoff = True
+                self.player_selector.change_selector_logic()
                 print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
-
-            self.player_selector.next_()
 
         return self.observation, 0, False, False, {}
     
@@ -260,6 +274,18 @@ class SoccerEnv(Env):
         else:
             raise ValueError("Invalid observation_type. Choose 'image' or 'dict'.")
        
+
+    @staticmethod
+    def apply_action_to_right_player(action, old_position):
+
+        new_position = old_position + action * PLAYER_VELOCITY * [-1, 1]
+
+
+    @staticmethod
+    def apply_action_to_left_player(action, old_position):
+
+        new_position = old_position + action * PLAYER_VELOCITY
+
 
     @staticmethod
     def is_near(pos_1: np.array, pos_2: np.array, threshold: float = 5.0):
