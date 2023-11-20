@@ -93,7 +93,7 @@ class SoccerEnv(Env):
         # https://pettingzoo.farama.org/content/environment_creation/
         # https://www.gymlibrary.dev/content/environment_creation/
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
-        self.all_coordinates = np.vstack((self.all_coordinates, (np.array(POINTS["center"], dtype=np.float32))))
+        
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
@@ -130,59 +130,18 @@ class SoccerEnv(Env):
         
         # [2] - Get select player to make action
         player_name, direction, _, team  = self.player_selector.get_info()
-        obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
 
-        # [3] - Apply action to selected player
-        old_position = self.all_coordinates[all_coordinates_index].copy()
-        new_position = old_position + np.array(t_action.direction) * PLAYER_VELOCITY * direction
-
-        if self.observation_type == 'dict':
-            # For observation format 'dict', old_position is a 2D array
-            new_position = np.clip(new_position, self.observation_space[team].low, self.observation_space[team].high)
-            print("index", obs_team_index, " of ", team, self.observation[team])
-            self.observation[team][obs_team_index] = new_position
-            ball_pos = self.observation["ball_position"]
-        elif self.observation_type == 'image':
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            self.all_coordinates[all_coordinates_index] = new_position
-            ball_pos = self.all_coordinates[-1]
-
-        print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
+        self.actions(action, team, t_action.direction, direction, player_name)
         
         # [4] - Change selected player
         self.player_selector.next_player()
 
-        # [5] - Check kickoff logic
-        if self.observation_type == 'image':
-            if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
-            and ball_pos not in self.all_coordinates[:11] \
-            and ball_pos not in self.all_coordinates[11:22]\
-            and self.kickoff == False:
-                    
-                # Autograb the ball if near enough and 
-                # no player is in the same pos of the ball 
-                self.all_coordinates[-1] = new_position
-                self.kickoff = True
-                self.player_selector.change_selector_logic()
-                print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
-            self.observation = self.observation_builder.build_observation(
-                self.all_coordinates[:11],
-                self.all_coordinates[11:22],
-                self.all_coordinates[-1]
-            )
-        elif self.observation_type == 'dict':
+        self.observation = self.observation_builder.build_observation(
+            self.all_coordinates[:11],
+            self.all_coordinates[11:22],
+            self.all_coordinates[-1]
+        )
 
-            if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
-                and ball_pos not in self.observation["left_team"] \
-                and ball_pos not in self.observation["right_team"]\
-                and self.kickoff == False:
-
-                # Autograb the ball if near enough and 
-                # no player is in the same pos of the ball 
-                self.observation["ball_position"] = new_position
-                self.kickoff = True
-                self.player_selector.change_selector_logic()
-                print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
 
         return self.observation, 0, False, False, {}
     
@@ -211,7 +170,8 @@ class SoccerEnv(Env):
         self.player_name_to_obs_index = dict( 
             zip(self.player_names, indexes)
         )
-
+        self.all_coordinates = np.vstack((self.all_coordinates, (np.array(POINTS["center"], dtype=np.float32))))
+        self.player_directions = np.array([[1, 0]] * 11 + [[-1, 0]] * 11)
 
     def __initialize_action_translator(self, action_format):
         if action_format == 'discrete':
@@ -223,24 +183,15 @@ class SoccerEnv(Env):
     def __initialize_render_function(self, render_mode: str = "humam") -> None:
 
         def human_render():
-            if self.observation_type == 'image':
-                left_team_positions = self.all_coordinates[:11]
-                right_team_positions = self.all_coordinates[11:22]
-                ball_position = self.all_coordinates[-1:]
-                field_image = self.field_drawer.draw_field(
-                    list(left_team_positions) + list(right_team_positions), 
-                    ball_position
-                )
-                return field_image
-            elif self.observation_type=='dict':
-                array_1 = self.observation["left_team"]
-                array_2 = self.observation["right_team"]
-                all_positions = np.concatenate([array_1, array_2], axis=0)
-                field_image = self.field_drawer.draw_field(
-                    all_positions, 
-                    [self.observation["ball_position"]]
-                )
-                return field_image
+            left_team_positions = self.all_coordinates[:11]
+            right_team_positions = self.all_coordinates[11:22]
+            ball_position = self.all_coordinates[-1:]
+            field_image = self.field_drawer.draw_field(
+                list(left_team_positions) + list(right_team_positions), 
+                ball_position
+            )
+            return field_image
+
             
         
         def rgb_array_render():
@@ -299,3 +250,63 @@ class SoccerEnv(Env):
         euclidian_distance = np.linalg.norm(pos_1 - pos_2)
 
         return euclidian_distance <= threshold
+
+    def actions(self, action: int, team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
+        obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
+        ball_pos = self.all_coordinates[-1]
+        is_new_position = False
+        if action >=0 and action <= 7:
+            old_position = self.all_coordinates[all_coordinates_index].copy()
+            new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
+            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            self.all_coordinates[all_coordinates_index] = new_position
+            self.player_directions[all_coordinates_index] = t_action_direction
+            print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
+            is_new_position = True
+        elif action == 8:
+            if (t_action_direction == np.array([2, 2])).all():
+                if team == 'left_team':
+                    if self.all_coordinates[-1] in self.all_coordinates[11:22]:
+                        for i, coordendas in enumerate(self.all_coordinates[11:22]):
+                            is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                            if is_near and (self.all_coordinates[-1] == coordendas).all():
+                                self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
+                                print(player_name,f"Roubou a bola de {self.player_names[i+11]}")
+                else:
+                    if self.all_coordinates[-1] in self.all_coordinates[:11]:
+                        for i, coordendas in enumerate(self.all_coordinates[:11]):
+                            is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                            if is_near and (self.all_coordinates[-1] == coordendas).all():
+                                self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
+                                print(player_name,f"Roubou a bola de {self.player_names[i]}")
+        elif action == 9 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+            old_position = self.all_coordinates[-1].copy()
+            new_position = old_position + np.array(t_action_direction) * 1.5 * self.player_directions[all_coordinates_index]
+            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            self.all_coordinates[-1] = new_position
+        elif action == 10 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+            old_position = self.all_coordinates[-1].copy()
+            new_position = old_position + np.array(t_action_direction) * 2.5 * self.player_directions[all_coordinates_index]
+            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            self.all_coordinates[-1] = new_position
+        elif action == 11 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+            old_position = self.all_coordinates[-1].copy()
+            new_position = old_position + np.array(t_action_direction) * 3.5 * self.player_directions[all_coordinates_index]
+            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            self.all_coordinates[-1] = new_position
+        
+        
+
+        # [5] - Check kickoff logic
+        if is_new_position:
+            if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
+                and ball_pos not in self.all_coordinates[:11] \
+                and ball_pos not in self.all_coordinates[11:22]\
+                and self.kickoff == False:
+                    
+                    # Autograb the ball if near enough and 
+                    # no player is in the same pos of the ball 
+                    self.all_coordinates[-1] = new_position
+                    self.kickoff = True
+                    self.player_selector.change_selector_logic()
+                    print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")

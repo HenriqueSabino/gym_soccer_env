@@ -7,7 +7,7 @@ class DiscreteActionTranslator(ActionTranslator):
     @staticmethod
     def translate_action(action) -> PlayerAction:
         
-        assert action in list(range(8)), "Action must be in [0,...,7]"
+        assert action in list(range(12)), "Action must be in [0,...,11]"
         
         action_to_direction = {
             0: np.array([1, 0]),  # Right (foward)
@@ -18,18 +18,22 @@ class DiscreteActionTranslator(ActionTranslator):
             5: np.array([-1, 1]), # Left-Up (45° movement)
             6: np.array([1, -1]), # Right-Down (45° movement)
             7: np.array([-1, -1]),# Left-Down (45° movement)
-            8: None,  # To be implemented in another week
-            9: None,  # To be implemented in another week
-            10: None, # To be implemented in another week
-            11: None, # To be implemented in another week
-            12: None, # To be implemented in another week
+            8: np.array([0, 0]),  
+            9: np.array([1, 0]),  
+            10: np.array([1, 0]), 
+            11: np.array([1, 0]), 
+            12: np.array([0, 0]), 
         }
 
         direction = DiscreteActionTranslator.__normalize_direction(action_to_direction[action])
 
         # if not is_on_left_side:
         #     direction[1] *= -1
-
+        if action == 8 and np.random.rand() < 0.5:
+            direction = np.array([2, 2])
+            print("Tentou roubar bola")
+        elif action ==8:
+            print("Falhou ao tentar roubar bola") 
         playerAction = PlayerAction(direction)
 
         return playerAction
