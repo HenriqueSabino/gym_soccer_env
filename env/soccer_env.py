@@ -281,17 +281,17 @@ class SoccerEnv(Env):
                                 print(player_name,f"Roubou a bola de {self.player_names[i]}")
         elif action == 9 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
             old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + np.array(t_action_direction) * 1.5 * self.player_directions[all_coordinates_index]
+            new_position = old_position + 1.5 * self.player_directions[all_coordinates_index]
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
             self.all_coordinates[-1] = new_position
         elif action == 10 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
             old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + np.array(t_action_direction) * 2.5 * self.player_directions[all_coordinates_index]
+            new_position = old_position + 2.5 * self.player_directions[all_coordinates_index]
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
             self.all_coordinates[-1] = new_position
         elif action == 11 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
             old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + np.array(t_action_direction) * 3.5 * self.player_directions[all_coordinates_index]
+            new_position = old_position + 3.5 * self.player_directions[all_coordinates_index]
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
             self.all_coordinates[-1] = new_position
         
