@@ -1,6 +1,7 @@
 from typing import Union
 from typing import Any, SupportsFloat
-from gymnasium.core import Env, RenderFrame
+from pettingzoo import AECEnv
+from gymnasium.core import RenderFrame
 from gymnasium import spaces
 from env.discrete_action_translator import DiscreteActionTranslator
 from env.player_selection import PlayerSelector
@@ -12,7 +13,7 @@ import numpy as np
 from env.constants import FIELD_WIDTH, FIELD_HEIGHT, PLAYER_VELOCITY, POINTS
 
 
-class SoccerEnv(Env):
+class SoccerEnv(AECEnv):
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "render_fps": 4
@@ -87,31 +88,40 @@ class SoccerEnv(Env):
     
 
     def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-
-        self.player_selector = PlayerSelector(self.player_names)
-
-        player_name = self.player_selector.get_info()
-        player_index = self.player_name_to_obs_indexp[player_name]
-
+        """
+        overview:
+        [1] - Initialize PlayerSelector
+        [2] - Build observation data structure
+        [3] - Define for all agents rewards, cumulative rewards, etc.
+        [4] - Define global state variables
+        """
         # If needed -> References to see reset() method:
         # https://pettingzoo.farama.org/content/environment_creation/
         # https://www.gymlibrary.dev/content/environment_creation/
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
+
+        # [1] - Initialize PlayerSelector
+        self.player_selector = PlayerSelector(self.player_names)
+
+        player_name, _, _, _ = self.player_selector.get_info()
+        _, all_coordinates_index = self.player_name_to_obs_index[player_name]
         
+        # [2] - Build observation data structure
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
             self.all_coordinates[-1],
-            player_index >= 11
+            all_coordinates_index >= 11
         )
         
+        # [3] - Define for all agents rewards, cumulative rewards, etc.
         self.rewards = {agent: 0 for agent in self.player_names}
         self._cumulative_rewards = {agent: 0 for agent in self.player_names}
         self.terminations = {agent: False for agent in self.player_names}
         self.truncations = {agent: False for agent in self.player_names}
         self.infos = {agent: {} for agent in self.player_names}
 
+        # [4] - Define global state variables
         self.kickoff = False
 
         return self.observation, self.infos
@@ -137,7 +147,7 @@ class SoccerEnv(Env):
         
         # [2] - Get select player to make action
         player_name, direction, _, team  = self.player_selector.get_info()
-        player_index = self.player_name_to_obs_index[player_name]
+        _, all_coordinates_index = self.player_name_to_obs_index[player_name]
 
         self.actions(action, team, t_action.direction, direction, player_name)
         
@@ -149,7 +159,7 @@ class SoccerEnv(Env):
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
             self.all_coordinates[-1],
-            player_index >= 11
+            all_coordinates_index >= 11
         )
 
 
@@ -172,7 +182,7 @@ class SoccerEnv(Env):
         self.all_coordinates = random_coordinates_generator() # posições de todos os jogadores
         self.player_names = ["player_" + str(r) for r in range(num_agents)]
         
-        # mapping agent_name to index of observation channel
+        # mapping agent_name to all indexes used in the code
         indexes = list(zip(
             list(range(11)) * 2, # Use in -> observation[team][index]
             list(range(22))      # Use in -> self.all_coordinates[index]
@@ -265,7 +275,7 @@ class SoccerEnv(Env):
         obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
         ball_pos = self.all_coordinates[-1]
         is_new_position = False
-        if action >=0 and action <= 7:
+        if action >= 0 and action <= 7:
             old_position = self.all_coordinates[all_coordinates_index].copy()
             new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
