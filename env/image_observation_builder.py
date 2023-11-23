@@ -9,7 +9,7 @@ class ImageObservationBuilder(ObservationBuilder):
         self.scale = scale
         self.border_size = border_size
 
-    def build_observation(self, left_team_positions: list, right_team_positions: list, ball_position: list):
+    def build_observation(self, left_team_positions: list, right_team_positions: list, ball_position: list, flip_side: bool):
         # TODO: Implement the image 120x80 with all channels described in the document
         self.width = FIELD_WIDTH * self.scale
         self.height = FIELD_HEIGHT * self.scale
@@ -22,7 +22,17 @@ class ImageObservationBuilder(ObservationBuilder):
         # Pois no numpy é diferente do PIL, que é largura x altura
         # Filling the image based on player positions and ball position
         ball_position = list(ball_position)
-        all_players = list(left_team_positions) + list(right_team_positions)
+
+        if not flip_side:
+            all_players = list(left_team_positions) + list(right_team_positions)
+        else:
+            all_players = list(right_team_positions) + list(left_team_positions)
+
+            for player in all_players:
+                player *= -1
+
+            ball_position[0] *= -1
+
         self.field_drawer._FieldDrawer__draw_players(draw, all_players)
         self.field_drawer._FieldDrawer__draw_ball(draw, ball_position)
 

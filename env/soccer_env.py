@@ -6,7 +6,7 @@ from env.discrete_action_translator import DiscreteActionTranslator
 from env.player_selection import PlayerSelector
 from env.field_drawer import FieldDrawer
 from env.image_observation_builder import ImageObservationBuilder
-from env.dict_observation_builder import DictObservationBuilder 
+from env.dict_observation_builder import DictObservationBuilder
 import numpy as np
 
 from env.constants import FIELD_WIDTH, FIELD_HEIGHT, PLAYER_VELOCITY, POINTS
@@ -89,6 +89,11 @@ class SoccerEnv(Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
+        self.player_selector = PlayerSelector(self.player_names)
+
+        player_name = self.player_selector.get_info()
+        player_index = self.player_name_to_obs_indexp[player_name]
+
         # If needed -> References to see reset() method:
         # https://pettingzoo.farama.org/content/environment_creation/
         # https://www.gymlibrary.dev/content/environment_creation/
@@ -97,8 +102,10 @@ class SoccerEnv(Env):
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
-            self.all_coordinates[-1]
+            self.all_coordinates[-1],
+            player_index >= 11
         )
+        
         self.rewards = {agent: 0 for agent in self.player_names}
         self._cumulative_rewards = {agent: 0 for agent in self.player_names}
         self.terminations = {agent: False for agent in self.player_names}
@@ -130,16 +137,19 @@ class SoccerEnv(Env):
         
         # [2] - Get select player to make action
         player_name, direction, _, team  = self.player_selector.get_info()
+        player_index = self.player_name_to_obs_index[player_name]
 
         self.actions(action, team, t_action.direction, direction, player_name)
         
         # [4] - Change selected player
         self.player_selector.next_player()
 
+
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
-            self.all_coordinates[-1]
+            self.all_coordinates[-1],
+            player_index >= 11
         )
 
 
