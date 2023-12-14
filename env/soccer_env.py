@@ -127,7 +127,7 @@ class SoccerEnv(AECEnv):
         return self.observation, self.infos
 
 
-    def step(self, action: int) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: tuple[int,int]) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         overview:
         [1] - Translate action
@@ -271,20 +271,35 @@ class SoccerEnv(AECEnv):
 
         return euclidian_distance <= threshold
 
-    def actions(self, action: int, team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
+    # implementado passe inteligente, roubar a bola. Falta implementar os chutes inteligentes e proteger a bola.
+    # na tupla de ação, o primeiro elemento é a direção e o segundo é a ação, nas ações 0 é andar, 1 é roubar bola, 2 é passe, 3 é chute e 4 é proteger a bola
+    # Falta conferir os valor fixos que estou utilizando, para ver de qual distancia pode roubar a bola, 
+    # a distancia do passe e também a distancia que o jogador tem que estar da bola para ele receber o passe, 
+    # também falta conferir a distancia do chute
+    def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
         obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
         ball_pos = self.all_coordinates[-1]
         is_new_position = False
-        if action >= 0 and action <= 7:
+        if action[1] == 0:
             old_position = self.all_coordinates[all_coordinates_index].copy()
             new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            if (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+                self.all_coordinates[-1] = new_position
             self.all_coordinates[all_coordinates_index] = new_position
             self.player_directions[all_coordinates_index] = t_action_direction
+            
+
             print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
             is_new_position = True
-        elif action == 8:
-            if (t_action_direction == np.array([2, 2])).all():
+        elif action[1]==1 :
+            if action[1] == 1 and np.random.rand() < 0.5:
+                steal_ball = True
+                print("Tentou roubar bola")
+            elif action[1] ==1:
+                steal_ball = False
+                print("Falhou ao tentar roubar bola") 
+            if steal_ball:
                 if team == 'left_team':
                     if self.all_coordinates[-1] in self.all_coordinates[11:22]:
                         for i, coordendas in enumerate(self.all_coordinates[11:22]):
@@ -299,22 +314,49 @@ class SoccerEnv(AECEnv):
                             if is_near and (self.all_coordinates[-1] == coordendas).all():
                                 self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
                                 print(player_name,f"Roubou a bola de {self.player_names[i]}")
-        elif action == 9 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+        # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
+        elif action[1] == 2 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+            old_position = self.all_coordinates[-1].copy()
+            new_position = old_position + np.array(t_action_direction)* 2.5 * direction
+            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+            if team == 'left_team':
+                min_distance = float('inf')  
+                nearest_player_index = -1
+                for i, coordenadas in enumerate(self.all_coordinates[:11]):
+                    is_near = SoccerEnv.is_near(new_position,coordenadas , 15.0)
+                    if is_near:
+                        distance = np.linalg.norm(new_position - coordenadas)
+        
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_player_index = i
+    
+                if nearest_player_index != -1:
+                    self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
+                else:
+                    self.all_coordinates[-1] = new_position
+            else:
+                if self.all_coordinates[-1] in self.all_coordinates[11:22]:
+                    for i, coordendas in enumerate(self.all_coordinates[11:22]):
+                        is_near = SoccerEnv.is_near(new_position,coordendas , 15.0)
+                    if is_near:
+                        distance = np.linalg.norm(new_position - coordenadas)
+        
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_player_index = i
+    
+                if nearest_player_index != -1:
+                    self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
+                else:
+                    self.all_coordinates[-1] = new_position
+        elif action[1] == 3 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
             old_position = self.all_coordinates[-1].copy()
             new_position = old_position + 1.5 * self.player_directions[all_coordinates_index]
             new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
             self.all_coordinates[-1] = new_position
-        elif action == 10 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
-            old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + 2.5 * self.player_directions[all_coordinates_index]
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            self.all_coordinates[-1] = new_position
-        elif action == 11 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
-            old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + 3.5 * self.player_directions[all_coordinates_index]
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            self.all_coordinates[-1] = new_position
-        
+        elif action[1] == 4:
+            pass
         
 
         # [5] - Check kickoff logic
