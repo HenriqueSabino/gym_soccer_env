@@ -1,3 +1,4 @@
 gymnasium
-PIL
+pillow
 numpy
+pettingzoo

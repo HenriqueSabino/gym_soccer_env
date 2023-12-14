@@ -277,98 +277,115 @@ class SoccerEnv(AECEnv):
     # a distancia do passe e também a distancia que o jogador tem que estar da bola para ele receber o passe, 
     # também falta conferir a distancia do chute
     def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
-        obs_team_index, all_coordinates_index  = self.player_name_to_obs_index[player_name]
+        _, all_coordinates_index  = self.player_name_to_obs_index[player_name]
         ball_pos = self.all_coordinates[-1]
-        is_new_position = False
-        if action[1] == 0:
-            old_position = self.all_coordinates[all_coordinates_index].copy()
-            new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            if (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
-                self.all_coordinates[-1] = new_position
-            self.all_coordinates[all_coordinates_index] = new_position
-            self.player_directions[all_coordinates_index] = t_action_direction
-            
 
-            print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
-            is_new_position = True
-        elif action[1]==1 :
-            if action[1] == 1 and np.random.rand() < 0.5:
-                steal_ball = True
-                print("Tentou roubar bola")
-            elif action[1] ==1:
-                steal_ball = False
-                print("Falhou ao tentar roubar bola") 
-            if steal_ball:
-                if team == 'left_team':
-                    if self.all_coordinates[-1] in self.all_coordinates[11:22]:
-                        for i, coordendas in enumerate(self.all_coordinates[11:22]):
-                            is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
-                            if is_near and (self.all_coordinates[-1] == coordendas).all():
-                                self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
-                                print(player_name,f"Roubou a bola de {self.player_names[i+11]}")
-                else:
-                    if self.all_coordinates[-1] in self.all_coordinates[:11]:
-                        for i, coordendas in enumerate(self.all_coordinates[:11]):
-                            is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
-                            if is_near and (self.all_coordinates[-1] == coordendas).all():
-                                self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
-                                print(player_name,f"Roubou a bola de {self.player_names[i]}")
+        new_player_pos = None
+
+        # player para enquanto executa ações
+        if action[1] == 0:
+            new_player_pos = self.__move_player(all_coordinates_index, t_action_direction, direction, team, player_name)
+        elif action[1] == 1:
+            self.__steal_ball_action(all_coordinates_index, team, player_name)
         # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
         elif action[1] == 2 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
-            old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + np.array(t_action_direction)* 2.5 * direction
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            if team == 'left_team':
-                min_distance = float('inf')  
-                nearest_player_index = -1
-                for i, coordenadas in enumerate(self.all_coordinates[:11]):
-                    is_near = SoccerEnv.is_near(new_position,coordenadas , 15.0)
-                    if is_near:
-                        distance = np.linalg.norm(new_position - coordenadas)
-        
-                        if distance < min_distance:
-                            min_distance = distance
-                            nearest_player_index = i
-    
-                if nearest_player_index != -1:
-                    self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
-                else:
-                    self.all_coordinates[-1] = new_position
-            else:
-                if self.all_coordinates[-1] in self.all_coordinates[11:22]:
-                    for i, coordendas in enumerate(self.all_coordinates[11:22]):
-                        is_near = SoccerEnv.is_near(new_position,coordendas , 15.0)
-                    if is_near:
-                        distance = np.linalg.norm(new_position - coordenadas)
-        
-                        if distance < min_distance:
-                            min_distance = distance
-                            nearest_player_index = i
-    
-                if nearest_player_index != -1:
-                    self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
-                else:
-                    self.all_coordinates[-1] = new_position
+            self.__pass_ball(t_action_direction, direction, team)
         elif action[1] == 3 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
-            old_position = self.all_coordinates[-1].copy()
-            new_position = old_position + 1.5 * self.player_directions[all_coordinates_index]
-            new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-            self.all_coordinates[-1] = new_position
+            self.__kick_ball(all_coordinates_index)
         elif action[1] == 4:
-            pass
-        
+            self.defend_ball()
 
         # [5] - Check kickoff logic
-        if is_new_position:
-            if SoccerEnv.is_near(new_position, ball_pos, 15.0) \
-                and ball_pos not in self.all_coordinates[:11] \
-                and ball_pos not in self.all_coordinates[11:22]\
-                and self.kickoff == False:
-                    
-                    # Autograb the ball if near enough and 
-                    # no player is in the same pos of the ball 
-                    self.all_coordinates[-1] = new_position
-                    self.kickoff = True
-                    self.player_selector.change_selector_logic()
-                    print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
+        if new_player_pos is not None and SoccerEnv.is_near(new_player_pos, ball_pos, 15.0) \
+            and ball_pos not in self.all_coordinates[:11] \
+            and ball_pos not in self.all_coordinates[11:22]\
+            and self.kickoff == False:
+                
+                # Autograb the ball if near enough and 
+                # no player is in the same pos of the ball 
+                self.all_coordinates[-1] = new_player_pos
+                self.kickoff = True
+                self.player_selector.change_selector_logic()
+                print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
+
+    def __steal_ball_action(self, all_coordinates_index, team, player_name):
+        if np.random.rand() < 0.5:
+            steal_ball = True
+            print("Tentou roubar bola")
+        else:
+            steal_ball = False
+            print("Falhou ao tentar roubar bola") 
+
+        if steal_ball:
+            if team == 'left_team':
+                if self.all_coordinates[-1] in self.all_coordinates[11:22]:
+                    for i, coordendas in enumerate(self.all_coordinates[11:22]):
+                        is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                        if is_near and (self.all_coordinates[-1] == coordendas).all():
+                            self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
+                            print(player_name,f"Roubou a bola de {self.player_names[i+11]}")
+            else:
+                if self.all_coordinates[-1] in self.all_coordinates[:11]:
+                    for i, coordendas in enumerate(self.all_coordinates[:11]):
+                        is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                        if is_near and (self.all_coordinates[-1] == coordendas).all():
+                            self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
+                            print(player_name,f"Roubou a bola de {self.player_names[i]}")
+
+    def __move_player(self, all_coordinates_index, t_action_direction, direction, team, player_name):
+        old_position = self.all_coordinates[all_coordinates_index].copy()
+        new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
+        new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+        if (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+            self.all_coordinates[-1] = new_position
+        self.all_coordinates[all_coordinates_index] = new_position
+        self.player_directions[all_coordinates_index] = t_action_direction
+
+        print(team, player_name, f"move from ({old_position}) to ({new_position})", f"Indexes({all_coordinates_index}, {self.player_selector._index})")
+
+        return new_position
+
+    def __pass_ball(self, t_action_direction, direction, team):
+        old_position = self.all_coordinates[-1].copy()
+        new_position = old_position + np.array(t_action_direction)* 2.5 * direction
+        new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+        if team == 'left_team':
+            min_distance = float('inf')  
+            nearest_player_index = -1
+            for i, coordenadas in enumerate(self.all_coordinates[:11]):
+                is_near = SoccerEnv.is_near(new_position,coordenadas , 15.0)
+                if is_near:
+                    distance = np.linalg.norm(new_position - coordenadas)
+    
+                    if distance < min_distance:
+                        min_distance = distance
+                        nearest_player_index = i
+
+            if nearest_player_index != -1:
+                self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
+            else:
+                self.all_coordinates[-1] = new_position
+        else:
+            if self.all_coordinates[-1] in self.all_coordinates[11:22]:
+                for i, coordendas in enumerate(self.all_coordinates[11:22]):
+                    is_near = SoccerEnv.is_near(new_position,coordendas , 15.0)
+                if is_near:
+                    distance = np.linalg.norm(new_position - coordenadas)
+    
+                    if distance < min_distance:
+                        min_distance = distance
+                        nearest_player_index = i
+
+            if nearest_player_index != -1:
+                self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
+            else:
+                self.all_coordinates[-1] = new_position
+
+    def __kick_ball(self, all_coordinates_index):
+        old_position = self.all_coordinates[-1].copy()
+        new_position = old_position + 1.5 * self.player_directions[all_coordinates_index]
+        new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
+        self.all_coordinates[-1] = new_position
+
+    def defend_ball(self):
+        pass
