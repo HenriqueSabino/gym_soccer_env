@@ -141,7 +141,6 @@ class SoccerEnv(AECEnv):
         # https://www.gymlibrary.dev/content/environment_creation/
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
 
-
         # [1] - Translate action
         t_action = self.action_translator(action)
         
@@ -278,6 +277,8 @@ class SoccerEnv(AECEnv):
     # também falta conferir a distancia do chute
     def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
         _, all_coordinates_index  = self.player_name_to_obs_index[player_name]
+
+        player_pos = self.all_coordinates[all_coordinates_index]
         ball_pos = self.all_coordinates[-1]
 
         new_player_pos = None
@@ -285,12 +286,13 @@ class SoccerEnv(AECEnv):
         # player para enquanto executa ações
         if action[1] == 0:
             new_player_pos = self.__move_player(all_coordinates_index, t_action_direction, direction, team, player_name)
+            player_pos = new_player_pos
         elif action[1] == 1:
             self.__steal_ball_action(all_coordinates_index, team, player_name)
         # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
-        elif action[1] == 2 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+        elif action[1] == 2 and SoccerEnv.is_near(player_pos, ball_pos, 15.0):
             self.__pass_ball(t_action_direction, direction, team)
-        elif action[1] == 3 and (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+        elif action[1] == 3 and SoccerEnv.is_near(player_pos, ball_pos, 15.0):
             self.__kick_ball(all_coordinates_index)
         elif action[1] == 4:
             self.defend_ball()
@@ -305,6 +307,7 @@ class SoccerEnv(AECEnv):
                 # no player is in the same pos of the ball 
                 self.all_coordinates[-1] = new_player_pos
                 self.kickoff = True
+                
                 self.player_selector.change_selector_logic()
                 print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
 
@@ -336,8 +339,10 @@ class SoccerEnv(AECEnv):
         old_position = self.all_coordinates[all_coordinates_index].copy()
         new_position = old_position + np.array(t_action_direction) * PLAYER_VELOCITY * direction
         new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
-        if (self.all_coordinates[all_coordinates_index] == self.all_coordinates[-1]).all():
+
+        if (old_position == self.all_coordinates[-1]).all():
             self.all_coordinates[-1] = new_position
+
         self.all_coordinates[all_coordinates_index] = new_position
         self.player_directions[all_coordinates_index] = t_action_direction
 
