@@ -23,7 +23,8 @@ class SoccerEnv(AECEnv):
                  render_mode="rgb_array", 
                  action_format='discrete', 
                  observation_format='image', 
-                 render_scale=8
+                 render_scale=8,
+                 ball_posession_reward=False
                 ) -> None:
         super().__init__()
 
@@ -52,6 +53,9 @@ class SoccerEnv(AECEnv):
         self.action_space = spaces.Discrete(13)
         self.observation_space = self._get_observation_space()
 
+        self.left_team_score = 0
+        self.right_team_score = 0
+        self.ball_posession_reward = ball_posession_reward
 
     def _get_observation_space(self):
         if self.observation_type == 'image':
@@ -124,6 +128,9 @@ class SoccerEnv(AECEnv):
         # [4] - Define global state variables
         self.kickoff = False
 
+        self.left_team_score = 0
+        self.right_team_score = 0
+
         return self.observation, self.infos
 
 
@@ -153,6 +160,35 @@ class SoccerEnv(AECEnv):
         # [4] - Change selected player
         self.player_selector.next_player()
 
+        ball_pos = self.all_coordinates[-1]
+        goal_size = 7.32
+
+        # right team goal
+        if (ball_pos[0] == 0
+            and ball_pos[1] > self.field_height / 2 + goal_size / 2
+            and ball_pos[1] > self.field_height / 2 - goal_size / 2):
+            self.right_team_score += 1
+            # TODO: kickoff
+        elif (ball_pos[0] == self.field_width
+            and ball_pos[1] > self.field_height / 2 + goal_size / 2
+            and ball_pos[1] > self.field_height / 2 - goal_size / 2):
+            self.left_team_score += 1
+            # TODO: kickoff
+
+        reward = 0
+    
+        if self.ball_posession_reward:
+            team_range = range(11) if team == "left_team" else range(11, 22)
+            for player_pos in self.all_coordinates[team_range]:
+                if player_pos == ball_pos:
+                    reward += 0.1
+                    break
+
+        # Note: every step this is being returned as reward
+        if team == "left_team":
+            reward += self.left_team_score - self.right_team_score
+        else:
+            reward += self.right_team_score - self.left_team_score
 
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
@@ -161,8 +197,7 @@ class SoccerEnv(AECEnv):
             all_coordinates_index >= 11
         )
 
-
-        return self.observation, 0, False, False, {}
+        return self.observation, reward, False, False, {}
     
 
     def __initialize_players(self, num_agents = 22):
