@@ -24,6 +24,7 @@ class SoccerEnv(AECEnv):
                  action_format='discrete', 
                  observation_format='image', 
                  render_scale=8,
+                 sparse_net_score_reward=False,
                  ball_posession_reward=False
                 ) -> None:
         super().__init__()
@@ -55,7 +56,10 @@ class SoccerEnv(AECEnv):
 
         self.left_team_score = 0
         self.right_team_score = 0
+        self.sparse_net_score_reward = sparse_net_score_reward
         self.ball_posession_reward = ball_posession_reward
+        self.ball_posession = None
+        self.last_ball_posession = None
 
     def _get_observation_space(self):
         if self.observation_type == 'image':
@@ -130,6 +134,8 @@ class SoccerEnv(AECEnv):
 
         self.left_team_score = 0
         self.right_team_score = 0
+        self.ball_posession = None
+        self.last_ball_posession = None
 
         return self.observation, self.infos
 
@@ -155,7 +161,7 @@ class SoccerEnv(AECEnv):
         player_name, direction, _, team  = self.player_selector.get_info()
         _, all_coordinates_index = self.player_name_to_obs_index[player_name]
 
-        self.actions(action, team, t_action.direction, direction, player_name)
+        penalty = self.actions(action, team, t_action.direction, direction, player_name)
         
         # [4] - Change selected player
         self.player_selector.next_player()
@@ -163,19 +169,22 @@ class SoccerEnv(AECEnv):
         ball_pos = self.all_coordinates[-1]
         goal_size = 7.32
 
+        left_team_goal = None
         # right team goal
         if (ball_pos[0] == 0
             and ball_pos[1] > self.field_height / 2 + goal_size / 2
             and ball_pos[1] > self.field_height / 2 - goal_size / 2):
             self.right_team_score += 1
+            left_team_goal = False
             # TODO: kickoff
         elif (ball_pos[0] == self.field_width
             and ball_pos[1] > self.field_height / 2 + goal_size / 2
             and ball_pos[1] > self.field_height / 2 - goal_size / 2):
             self.left_team_score += 1
+            left_team_goal = True
             # TODO: kickoff
 
-        reward = 0
+        reward = penalty
     
         if self.ball_posession_reward:
             team_range = range(11) if team == "left_team" else range(11, 22)
@@ -184,11 +193,24 @@ class SoccerEnv(AECEnv):
                     reward += 0.1
                     break
 
-        # Note: every step this is being returned as reward
-        if team == "left_team":
-            reward += self.left_team_score - self.right_team_score
-        else:
-            reward += self.right_team_score - self.left_team_score
+        if not self.sparse_net_score_reward:
+            if team == "left_team":
+                reward += self.left_team_score - self.right_team_score
+            else:
+                reward += self.right_team_score - self.left_team_score
+
+        elif self.sparse_net_score_reward:
+            # XOR check
+            if not(team == "left_team" ^ left_team_goal):
+                reward += 1
+            else:
+                reward -= 1
+
+        if self.last_ball_posession is not None and self.last_ball_posession != self.ball_posession:
+            if team == self.ball_posession:
+                reward += 0.01
+            else:
+                reward -= 0.01
 
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[:11],
@@ -310,24 +332,27 @@ class SoccerEnv(AECEnv):
     # Falta conferir os valor fixos que estou utilizando, para ver de qual distancia pode roubar a bola, 
     # a distancia do passe e também a distancia que o jogador tem que estar da bola para ele receber o passe, 
     # também falta conferir a distancia do chute
-    def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> None:
+    # retorna uma penalidade por executar ações indevidas, ou zero
+    def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> float:
         _, all_coordinates_index  = self.player_name_to_obs_index[player_name]
 
         player_pos = self.all_coordinates[all_coordinates_index]
         ball_pos = self.all_coordinates[-1]
 
         new_player_pos = None
+        is_near = SoccerEnv.is_near(player_pos, ball_pos, 15.0)
 
+        penalty = 0
         # player para enquanto executa ações
         if action[1] == 0:
             new_player_pos = self.__move_player(all_coordinates_index, t_action_direction, direction, team, player_name)
             player_pos = new_player_pos
         elif action[1] == 1:
-            self.__steal_ball_action(all_coordinates_index, team, player_name)
+            penalty = self.__steal_ball_action(all_coordinates_index, team, player_name)
         # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
-        elif action[1] == 2 and SoccerEnv.is_near(player_pos, ball_pos, 15.0):
+        elif action[1] == 2 and is_near:
             self.__pass_ball(t_action_direction, direction, team)
-        elif action[1] == 3 and SoccerEnv.is_near(player_pos, ball_pos, 15.0):
+        elif action[1] == 3 and is_near:
             self.__kick_ball(all_coordinates_index)
         elif action[1] == 4:
             self.defend_ball()
@@ -341,10 +366,16 @@ class SoccerEnv(AECEnv):
                 # Autograb the ball if near enough and 
                 # no player is in the same pos of the ball 
                 self.all_coordinates[-1] = new_player_pos
+                self.ball_posession = team
                 self.kickoff = True
                 
                 self.player_selector.change_selector_logic()
                 print("@@@@@@@@ Aconteceu kickoff @@@@@@@@")
+        
+        if not is_near and action[1] >= 2:
+            penalty = -0.01
+
+        return penalty
 
     def __steal_ball_action(self, all_coordinates_index, team, player_name):
         if np.random.rand() < 0.5:
@@ -362,6 +393,12 @@ class SoccerEnv(AECEnv):
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
                             print(player_name,f"Roubou a bola de {self.player_names[i+11]}")
+                            self.last_ball_posession = self.ball_posession
+                            self.ball_posession = team
+                        else:
+                            return -0.01
+                else:
+                    return -0.01
             else:
                 if self.all_coordinates[-1] in self.all_coordinates[:11]:
                     for i, coordendas in enumerate(self.all_coordinates[:11]):
@@ -369,6 +406,13 @@ class SoccerEnv(AECEnv):
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
                             print(player_name,f"Roubou a bola de {self.player_names[i]}")
+                            self.last_ball_posession = self.ball_posession
+                            self.ball_posession = team
+                        else:
+                            return -0.01
+                else:
+                    return -0.01
+        return 0
 
     def __move_player(self, all_coordinates_index, t_action_direction, direction, team, player_name):
         old_position = self.all_coordinates[all_coordinates_index].copy()
