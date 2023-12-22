@@ -119,7 +119,7 @@ class SoccerEnv(AECEnv):
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
             self.all_coordinates[-1],
-            all_coordinates_index >= 11
+            all_coordinates_index >= 10
         )
         
         # [3] - Define for all agents rewards, cumulative rewards, etc.
@@ -162,6 +162,7 @@ class SoccerEnv(AECEnv):
         _, all_coordinates_index = self.player_name_to_obs_index[player_name]
 
         penalty = self.actions(action, team, t_action.direction, direction, player_name)
+        self.goalkeeper(team)
         
         # [4] - Change selected player
         self.player_selector.next_player()
@@ -187,7 +188,7 @@ class SoccerEnv(AECEnv):
         reward = penalty
     
         if self.ball_posession_reward:
-            team_range = range(11) if team == "left_team" else range(11, 22)
+            team_range = range(1,11) if team == "left_team" else range(12, 22)
             for player_pos in self.all_coordinates[team_range]:
                 if player_pos == ball_pos:
                     reward += 0.1
@@ -216,7 +217,7 @@ class SoccerEnv(AECEnv):
             self.all_coordinates[:11],
             self.all_coordinates[11:22],
             self.all_coordinates[-1],
-            all_coordinates_index >= 11
+            all_coordinates_index >= 10
         )
 
         return self.observation, reward, False, False, {}
@@ -246,6 +247,25 @@ class SoccerEnv(AECEnv):
         self.player_name_to_obs_index = dict( 
             zip(self.player_names, indexes)
         )
+        self.outer_goal_height = 40 
+        self.outer_goal_width = 16.5 
+
+        self.inner_goal_height = 18.3 
+        self.inner_goal_width = 5.5
+        self.goal_size = 7.32
+
+        # Set the position of the first player (self.all_coordinates[0]) in front of the left goal post
+        self.all_coordinates[0] = (
+            0,
+            np.random.uniform(FIELD_HEIGHT/2 + self.goal_size/2, FIELD_HEIGHT/2 - self.goal_size/2)
+        )
+
+        # Set the position of the 12th player (self.all_coordinates[11]) in front of the right goal post
+        self.all_coordinates[12] = (
+            FIELD_WIDTH,
+            np.random.uniform(FIELD_HEIGHT/2 + self.goal_size/2, FIELD_HEIGHT/2 - self.goal_size/2)
+        )
+
         self.all_coordinates = np.vstack((self.all_coordinates, (np.array(POINTS["center"], dtype=np.float32))))
         self.player_directions = np.array([[1, 0]] * 11 + [[-1, 0]] * 11)
 
@@ -359,8 +379,8 @@ class SoccerEnv(AECEnv):
 
         # [5] - Check kickoff logic
         if new_player_pos is not None and SoccerEnv.is_near(new_player_pos, ball_pos, 15.0) \
-            and ball_pos not in self.all_coordinates[:11] \
-            and ball_pos not in self.all_coordinates[11:22]\
+            and ball_pos not in self.all_coordinates[1:11] \
+            and ball_pos not in self.all_coordinates[12:22]\
             and self.kickoff == False:
                 
                 # Autograb the ball if near enough and 
@@ -387,8 +407,8 @@ class SoccerEnv(AECEnv):
 
         if steal_ball:
             if team == 'left_team':
-                if self.all_coordinates[-1] in self.all_coordinates[11:22]:
-                    for i, coordendas in enumerate(self.all_coordinates[11:22]):
+                if self.all_coordinates[-1] in self.all_coordinates[12:22]:
+                    for i, coordendas in enumerate(self.all_coordinates[12:22]):
                         is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
@@ -400,8 +420,8 @@ class SoccerEnv(AECEnv):
                 else:
                     return -0.01
             else:
-                if self.all_coordinates[-1] in self.all_coordinates[:11]:
-                    for i, coordendas in enumerate(self.all_coordinates[:11]):
+                if self.all_coordinates[-1] in self.all_coordinates[1:11]:
+                    for i, coordendas in enumerate(self.all_coordinates[1:11]):
                         is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
@@ -470,6 +490,52 @@ class SoccerEnv(AECEnv):
         new_position = old_position + 1.5 * self.player_directions[all_coordinates_index]
         new_position = np.clip(new_position, (0, 0), (self.field_height, self.field_width))
         self.all_coordinates[-1] = new_position
+    def goalkeeper(self, team):
+        if team == 'left_team':
+            old_position = self.all_coordinates[0].copy()
 
+            # Limite superior e inferior da linha do gol
+            upper_limit = FIELD_HEIGHT / 2 + self.outer_goal_height / 2
+            lower_limit = FIELD_HEIGHT / 2 - self.outer_goal_height / 2
+            # Movimentação aleatória para cima ou para baixo
+            move_direction = np.random.choice([-1, 1])
+
+            # Distância aleatória para se movimentar (você pode ajustar a amplitude conforme necessário)
+            move_distance = np.random.uniform(0, 1.5)
+
+            new_position_y = old_position[1] + move_direction * move_distance
+
+             # Limitando a nova posição ao range do gol
+            new_position_y = np.clip(new_position_y, lower_limit, upper_limit)
+
+            # Atualizando a posição apenas na coordenada y
+            new_position = old_position.copy()
+            new_position[1] = new_position_y
+
+            # Atualizando self.all_coordinates para a posição do goleiro
+            self.all_coordinates[0] = new_position
+        elif team == 'right_team':
+            old_position = self.all_coordinates[12].copy()
+
+            # Limite superior e inferior da linha do gol
+            upper_limit = FIELD_HEIGHT / 2 + self.outer_goal_height / 2
+            lower_limit = FIELD_HEIGHT / 2 - self.outer_goal_height / 2
+            # Movimentação aleatória para cima ou para baixo
+            move_direction = np.random.choice([-1, 1])
+
+            # Distância aleatória para se movimentar (você pode ajustar a amplitude conforme necessário)
+            move_distance = np.random.uniform(0, 1.5)
+
+            new_position_y = old_position[1] + move_direction * move_distance
+
+            # Limitando a nova posição ao range do gol
+            new_position_y = np.clip(new_position_y, lower_limit, upper_limit)
+
+            # Atualizando a posição apenas na coordenada y
+            new_position = old_position.copy()
+            new_position[1] = new_position_y
+
+            # Atualizando self.all_coordinates para a posição do goleiro
+            self.all_coordinates[12] = new_position
     def defend_ball(self):
         pass
