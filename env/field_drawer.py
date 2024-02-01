@@ -5,17 +5,24 @@ from env.constants import FIELD_WIDTH, FIELD_HEIGHT
 
 
 class FieldDrawer:
-    def __init__(self, scale, border_size) -> None:
+    def __init__(self, scale: int, border_size: float) -> None:
         self.scale = scale
         self.border_size = border_size
 
         self.width = FIELD_WIDTH * self.scale
         self.height = FIELD_HEIGHT * self.scale
         
-    def draw_field(self, players: list, ball_position: list):
+    def draw_field(self, 
+                   players: list, 
+                   ball_position: list,
+                   field_bg_color: str = "green", 
+                   player_left_color: str = "red", 
+                   player_right_color: str = "Blue",
+                   ball_color = "black"
+                   ):
 
         assert len(players) == 22
-        field = Image.new("RGB", (self.width, self.height), "green")  # Green background for the field
+        field = Image.new("RGB", (self.width, self.height), field_bg_color)  # Green background for the field
 
         # Use PIL's drawing module to add field lines or other details
         draw = ImageDraw.Draw(field)
@@ -23,8 +30,8 @@ class FieldDrawer:
         self.__draw_outer_markings(draw)
         self.__draw_center_line(draw)
         self.__draw_goals(draw)
-        self.__draw_players(draw, players)
-        self.__draw_ball(draw, ball_position[0])
+        self.__draw_players(draw, players, player_left_color, player_right_color)
+        self.__draw_ball(draw, ball_position[0], ball_color)
 
         return field
 
@@ -118,7 +125,12 @@ class FieldDrawer:
             (self.width - self.border_size, self.height / 2 + goal_size / 2),
         ], width=self.border_size, fill="blue")
 
-    def __draw_players(self, draw: ImageDraw.ImageDraw, players: list):
+    def __draw_players(self, 
+                       draw: ImageDraw.ImageDraw, 
+                       players: list,
+                       player_left_color: str,
+                       player_right_color: str
+                       ) -> None:
         player_size = 1 * self.scale
         
         for i in range(11):
@@ -126,16 +138,16 @@ class FieldDrawer:
             draw.ellipse(xy=[
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
                 (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
-            ], fill="red")
+            ], fill=player_left_color)
 
         for i in range(11, 22):
             player = players[i]
             draw.ellipse(xy=[
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
                 (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
-            ], fill="blue")
+            ], fill=player_right_color)
     
-    def __draw_ball(self, draw: ImageDraw.ImageDraw, ball_position: list):
+    def __draw_ball(self, draw: ImageDraw.ImageDraw, ball_position: list, ball_color: str):
         #ball_position = ball_position[0]
         assert len(ball_position) == 2
 
@@ -143,4 +155,4 @@ class FieldDrawer:
         draw.ellipse(xy=[
             (ball_position[0] * self.scale - ball_size, ball_position[1] * self.scale - ball_size),
             (ball_position[0] * self.scale + ball_size, ball_position[1] * self.scale + ball_size)
-        ], fill="black")
+        ], fill=ball_color)
