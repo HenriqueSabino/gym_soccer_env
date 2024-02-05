@@ -2,3 +2,4 @@ gymnasium
 pillow
 numpy
 pettingzoo
+pygame

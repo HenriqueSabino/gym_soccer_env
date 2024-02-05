@@ -3,6 +3,8 @@ from typing import Any, SupportsFloat
 from pettingzoo import AECEnv
 from gymnasium.core import RenderFrame
 from gymnasium import spaces
+from gymnasium.error import DependencyNotInstalled
+from env.action_translator import ActionTranslator
 from env.discrete_action_translator import DiscreteActionTranslator
 from env.player_selection import PlayerSelector
 from env.field_drawer import FieldDrawer
@@ -50,7 +52,7 @@ class SoccerEnv(AECEnv):
         # # https://pettingzoo.farama.org/content/environment_creation/
         # # https://www.gymlibrary.dev/content/environment_creation/
         # # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
-        self.action_space = spaces.Discrete(13)
+        self.action_space = self.action_translator.action_space()
         self.observation_space = self._get_observation_space()
 
         self.left_team_score = 0
@@ -59,6 +61,8 @@ class SoccerEnv(AECEnv):
         self.ball_posession_reward = ball_posession_reward
         self.ball_posession = None
         self.last_ball_posession = None
+        self.pygame_window = None
+        self.pygame_clock = None
 
     def _get_observation_space(self):
         if self.observation_type == 'image':
@@ -88,7 +92,6 @@ class SoccerEnv(AECEnv):
             })
         else:
             raise ValueError("Invalid observation_type. Choose 'image' or 'dict'.")
-
 
     def render(self) -> Union[RenderFrame, list[RenderFrame], None]:
         return self.render_function()
@@ -159,7 +162,7 @@ class SoccerEnv(AECEnv):
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
 
         # [1] - Translate action
-        t_action = self.action_translator(action)
+        t_action = self.action_translator.translate_action(action)
         
         # [2] - Get select player to make action
         player_name, direction, _, team, other_team  = self.player_selector.get_info()
@@ -258,6 +261,10 @@ class SoccerEnv(AECEnv):
         ##                # Can be used to end the episode prematurely before a terminal state is reached.
         ##                # If true, the user needs to call reset.
         # info (dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
+
+        if self.render_mode == 'human':
+            self.render()
+
         return self.observation, reward, False, False, {}
     
 
@@ -336,12 +343,12 @@ class SoccerEnv(AECEnv):
 
     def __initialize_action_translator(self, action_format):
         if action_format == 'discrete':
-            self.action_translator = DiscreteActionTranslator.translate_action
+            self.action_translator = DiscreteActionTranslator()
         else:
             raise Exception("Action format is not recognized")
         
 
-    def __initialize_render_function(self, render_mode: str = "humam", color_option: int = 0) -> None:
+    def __initialize_render_function(self, render_mode: str = "human", color_option: int = 0) -> None:
         
         # Site to visualize color schemas -> https://www.realtimecolors.com/?colors=050316-0f5415-24972e-c528f0-f9e636&fonts=Poppins-Poppins
         color_schemas = [
@@ -375,9 +382,30 @@ class SoccerEnv(AECEnv):
                 ball_position,
                 **colors
             )
-            return field_image
 
+            field_image = np.array(field_image)
 
+            """Fetch the last frame from the base environment and render it to the screen."""
+            try:
+                import pygame
+            except ImportError as e:
+                raise DependencyNotInstalled(
+                    "pygame is not installed, run `pip install gymnasium[box2d]`"
+                ) from e
+            
+            if self.pygame_window is None:
+                pygame.init()
+                pygame.display.init()
+                self.pygame_window = pygame.display.set_mode(field_image.shape[:2])
+
+            if self.pygame_clock is None:
+                self.pygame_clock = pygame.time.Clock()
+
+            surf = pygame.surfarray.make_surface(field_image)
+            self.pygame_window.blit(surf, (0, 0))
+            pygame.event.pump()
+            self.pygame_clock.tick(self.metadata["render_fps"])
+            pygame.display.flip()
         
         def rgb_array_render():
             if self.observation_type == 'image':
@@ -405,6 +433,7 @@ class SoccerEnv(AECEnv):
             "human": human_render,
             "rgb_array": rgb_array_render 
         }
+
         self.render_function = render_functions[render_mode]
 
 

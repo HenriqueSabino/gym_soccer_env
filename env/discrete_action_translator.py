@@ -2,10 +2,11 @@ from env.action_translator import ActionTranslator
 from env.player_action import PlayerAction
 import numpy as np
 
+from gymnasium.spaces.multi_discrete import MultiDiscrete
+
 class DiscreteActionTranslator(ActionTranslator):
     
-    @staticmethod
-    def translate_action(action) -> PlayerAction:
+    def translate_action(self, action) -> PlayerAction:
         
         assert action[0] in list(range(9)), "Direction must be in [0,...,8]"
         assert action[1] in list(range(5)), "Action must be in [0,...,4]"
@@ -27,6 +28,9 @@ class DiscreteActionTranslator(ActionTranslator):
         playerAction = PlayerAction(direction)
 
         return playerAction
+    
+    def action_space(self):
+        return MultiDiscrete([9, 5])
     
     @staticmethod
     def __normalize_direction(direction):
