@@ -32,9 +32,11 @@ class ImageObservationBuilder(ObservationBuilder):
                 player *= -1
 
             ball_position[0] *= -1
-
-        self.field_drawer._FieldDrawer__draw_players(draw, all_players)
-        self.field_drawer._FieldDrawer__draw_ball(draw, ball_position)
+        player_left_color: str = "red" 
+        player_right_color: str = "Blue"
+        ball_color = "black"
+        self.field_drawer._FieldDrawer__draw_players(draw, all_players,player_left_color, player_right_color)
+        self.field_drawer._FieldDrawer__draw_ball(draw, ball_position,ball_color)
 
         '''for player_position in left_team_positions:
             x, y = player_position
