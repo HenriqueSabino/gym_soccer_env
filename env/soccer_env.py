@@ -186,7 +186,7 @@ class SoccerEnv(AECEnv):
             self.is_before_kickoff = True
             self.player_selector.kickoff_rotation(TEAM_LEFT_NAME)
             # Reset position
-            self.all_coordinates = self.start_positions
+            self.all_coordinates = self.start_positions_left_kickoff
             self.player_directions = self.start_directions
         elif (ball_pos[0] == FIELD_WIDTH
             and ball_pos[1] > FIELD_HEIGHT / 2 + goal_size / 2
@@ -197,7 +197,7 @@ class SoccerEnv(AECEnv):
             self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME)
 
             # Reset position
-            self.all_coordinates = self.start_positions
+            self.all_coordinates = self.start_positions_right_kickoff
             self.player_directions = self.start_directions
 
         # [5] - Change selected player
@@ -291,8 +291,8 @@ class SoccerEnv(AECEnv):
             """
             # Initialize an empty list for player positions
 
-            midfield_x = FIELD_WIDTH / 2
-            midfield_y = FIELD_HEIGHT / 2
+            midfield_x = FIELD_WIDTH // 2
+            midfield_y = FIELD_HEIGHT // 2
 
             # Players' positioning
             # Team A (Player indexes 0-10)
@@ -346,7 +346,7 @@ class SoccerEnv(AECEnv):
         )
 
         # Set the position of the 12th player (self.all_coordinates[11]) in front of the right goal post
-        self.all_coordinates[12] = (
+        self.all_coordinates[11] = (
             FIELD_WIDTH,
             np.random.uniform(FIELD_HEIGHT/2 + self.goal_size/2, FIELD_HEIGHT/2 - self.goal_size/2)
         )
@@ -355,7 +355,18 @@ class SoccerEnv(AECEnv):
         self.player_directions = np.array([[1, 0]] * 11 + [[-1, 0]] * 11)
         
         # Guarda a posição e direção inicial para usar depois do gol
-        self.start_positions = self.all_coordinates 
+        self.start_positions_left_kickoff = self.all_coordinates
+
+        self.start_positions_right_kickoff = self.start_positions_left_kickoff.copy()
+
+        self.start_positions_right_kickoff[12] = self.start_positions_right_kickoff[1]
+        self.start_positions_right_kickoff[12][0] = FIELD_WIDTH - self.start_positions_right_kickoff[12][0]
+
+        self.start_positions_right_kickoff[1][0] *= 0.8
+
+        # Essa linha faz o time azul começar com a bola
+        self.all_coordinates = self.start_positions_right_kickoff
+
         self.start_directions = self.player_directions
 
 
@@ -527,9 +538,7 @@ class SoccerEnv(AECEnv):
             # print(not np.any(np.all(ball_pos == self.all_coordinates[11:21], axis=1))) # True
         if (self.is_before_kickoff
             and new_player_pos is not None 
-            and is_near 
-            and not SoccerEnv.is_in_any_array(ball_pos, self.all_coordinates[0:11]) 
-            and not SoccerEnv.is_in_any_array(ball_pos, self.all_coordinates[11:21])):
+            and SoccerEnv.is_near(player_pos, ball_pos, 0.1)):
                 
                 # Autograb the ball if near enough and 
                 # no player is in the same pos of the ball 
