@@ -150,11 +150,12 @@ class SoccerEnv(AECEnv):
         overview:
         [1] - Translate action
         [2] - Get select player to make action
-        [3] - Apply action to selected player and Check kickoff logic
-        [4] - Check goal logic
-        [5] - Change selected player
-        [6] - Calculate reward
-        [7] - Update observatio
+        [3] - Removes, if defending, the current player of the defending list
+        [4] - Apply action to selected player and Check kickoff logic
+        [5] - Check goal logic
+        [6] - Change selected player
+        [7] - Calculate reward
+        [8] - Update observatio
         """
         # If needed -> References to see step() method:
         # https://pettingzoo.farama.org/content/environment_creation/
@@ -168,11 +169,14 @@ class SoccerEnv(AECEnv):
         player_name, direction, _, team, other_team  = self.player_selector.get_info()
         _, all_coordinates_index = self.player_name_to_obs_index[player_name]
 
-        # [3] - Apply action and Check kickoff logic
-        penalty = self.actions(action, team, t_action.direction, direction, player_name)
+        # [3] - Removes, if defending, the current player of the defending list
+        self.clean_defended_positions()
+
+        # [4] - Apply action and Check kickoff logic
+        penalty = self.actions(action, team, other_team, t_action.direction, direction, player_name)
         self.goalkeeper(team)
 
-        # [4] - Check goal logic
+        # [5] - Check goal logic
         ball_pos = self.all_coordinates[-1]
         goal_size = 7.32
 
@@ -200,10 +204,10 @@ class SoccerEnv(AECEnv):
             self.all_coordinates = self.start_positions_right_kickoff
             self.player_directions = self.start_directions
 
-        # [5] - Change selected player
+        # [6] - Change selected player
         self.player_selector.next_player()
 
-        # [6] - Calculate reward
+        # [7] - Calculate reward
         reward = penalty
     
         if self.ball_posession_reward:
@@ -230,7 +234,7 @@ class SoccerEnv(AECEnv):
             else:
                 reward -= 0.01
 
-        # [7] - Update observatio
+        # [8] - Update observatio
         self.observation = self.observation_builder.build_observation(
             self.all_coordinates[0:11].copy(),
             self.all_coordinates[11:22].copy(),
@@ -353,6 +357,16 @@ class SoccerEnv(AECEnv):
 
         self.all_coordinates = np.vstack((self.all_coordinates, (np.array(POINTS["center"], dtype=np.float32))))
         self.player_directions = np.array([[1, 0]] * 11 + [[-1, 0]] * 11)
+        self.defend_positions = {
+            TEAM_LEFT_NAME: {
+                "positions": [],
+                "player_names": [],
+            },
+            TEAM_RIGHT_NAME: {
+                "positions": [],
+                "player_names": [],
+            }
+        }
         
         # Guarda a posição e direção inicial para usar depois do gol
         self.start_positions_left_kickoff = self.all_coordinates
@@ -507,7 +521,7 @@ class SoccerEnv(AECEnv):
     # a distancia do passe e também a distancia que o jogador tem que estar da bola para ele receber o passe, 
     # também falta conferir a distancia do chute
     # retorna uma penalidade por executar ações indevidas, ou zero
-    def actions(self, action: tuple[int,int], team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> float:
+    def actions(self, action: tuple[int,int], team: str, other_team: str, t_action_direction: np.array, direction: np.array, player_name: str) -> float:
         _, all_coordinates_index  = self.player_name_to_obs_index[player_name]
 
         player_pos = self.all_coordinates[all_coordinates_index]
@@ -523,14 +537,14 @@ class SoccerEnv(AECEnv):
             new_player_pos = self.__move_player(all_coordinates_index, t_action_direction, direction, team, player_name)
             # player_pos = new_player_pos
         elif action[1] == 1:
-            penalty = self.__steal_ball_action(all_coordinates_index, team, player_name)
+            penalty = self.__steal_ball_action(all_coordinates_index, team, other_team, player_name)
         # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
         elif action[1] == 2 and has_the_ball:
             self.__pass_ball(t_action_direction, direction, team)
         elif action[1] == 3 and has_the_ball:
             self.__kick_ball(all_coordinates_index)
         elif action[1] == 4:
-            self.defend_ball()
+            self.defend_position(self.all_coordinates[all_coordinates_index], team, player_name)
 
         # [4] - Check kickoff logic
         # if is_near:
@@ -560,8 +574,13 @@ class SoccerEnv(AECEnv):
         return penalty
 
 
-    def __steal_ball_action(self, all_coordinates_index, team, player_name):
-        if np.random.rand() < 0.5:
+    def __steal_ball_action(self, all_coordinates_index: int, team: str, other_team: str, player_name: str):
+        
+        player_position = self.all_coordinates[all_coordinates_index]
+        defended_positions = self.defend_positions[other_team]["positions"]
+
+        defense_bonus = +0.1 if SoccerEnv.is_near(player_position, defended_positions, 3.0) else 0
+        if np.random.rand() < 0.5 + defense_bonus:
             steal_ball = True
             print("Tentou roubar bola")
         else:
@@ -570,11 +589,11 @@ class SoccerEnv(AECEnv):
 
         if steal_ball:
             if team == TEAM_LEFT_NAME:
-                if self.all_coordinates[-1] in self.all_coordinates[12:22]:
+                if SoccerEnv.is_in_any_array(self.all_coordinates[-1], self.all_coordinates[12:22]):
                     for i, coordendas in enumerate(self.all_coordinates[12:22]):
-                        is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                        is_near = SoccerEnv.is_near(player_position, coordendas, 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
-                            self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
+                            self.all_coordinates[-1] = player_position
                             print(player_name,f"Roubou a bola de {self.player_names[i+11]}")
                             self.last_ball_posession = self.ball_posession
                             self.ball_posession = team
@@ -583,9 +602,9 @@ class SoccerEnv(AECEnv):
                 else:
                     return -0.01
             else:
-                if self.all_coordinates[-1] in self.all_coordinates[1:11]:
+                if SoccerEnv.is_in_any_array(self.all_coordinates[-1], self.all_coordinates[1:11]):
                     for i, coordendas in enumerate(self.all_coordinates[1:11]):
-                        is_near = SoccerEnv.is_near(self.all_coordinates[all_coordinates_index],coordendas , 15.0)
+                        is_near = SoccerEnv.is_near(player_position, coordendas, 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = self.all_coordinates[all_coordinates_index]
                             print(player_name,f"Roubou a bola de {self.player_names[i]}")
@@ -736,5 +755,24 @@ class SoccerEnv(AECEnv):
             self.all_coordinates[12] = new_position
 
 
-    def defend_ball(self):
-        pass
+    def defend_position(self, player_position: np.array, team: str, player_name: str):
+        """
+        Makes the player defend the position by adding its coordinates into a list.
+        This list is used inside steal_ball action to reduce the odds of stealing.
+        Each team has its list and all defended positions are cleaned after some turns.
+        """
+        self.defend_positions[team]["positions"].append(player_position)
+        self.defend_positions[team]["player_names"].append(player_name)
+
+
+    def clean_defended_positions(self, player_name: str, team: str):
+        """
+        Checks if the current player name is in a defended position and removes it.
+        If a player takes the defend ball action, then it will be added back to the list.
+        """
+        defending_players_names = self.defended_positions[team]["player_names"]
+        if player_name in defending_players_names:
+            index = defending_players_names.index(player_name)
+            self.defended_positions[team]["positions"].pop(index)
+            self.defended_positions[team]["player_names"].pop(index)
+
