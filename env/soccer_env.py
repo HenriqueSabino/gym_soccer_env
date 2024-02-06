@@ -289,18 +289,36 @@ class SoccerEnv(AECEnv):
             n(int): Quantidade de coordenadas geradas
             grid_size(int): Quanto maior, mais juntos os pontos ficam
             """
-            # Generate grid coordinates for players
-            grid_x = np.linspace(0, FIELD_WIDTH, grid_size, endpoint=False)
-            grid_y = np.linspace(0, FIELD_HEIGHT, grid_size, endpoint=False)
+            # Initialize an empty list for player positions
 
-            # Create coordinates using the grid
-            x, y = np.meshgrid(grid_x, grid_y)
-            coordinates = np.column_stack((x.flatten(), y.flatten()))
+            midfield_x = FIELD_WIDTH / 2
+            midfield_y = FIELD_HEIGHT / 2
 
-            # Repeat the coordinates to cover all players
-            repeated_coordinates = np.tile(coordinates, (int(np.ceil(n / len(coordinates))), 1))
+            # Players' positioning
+            # Team A (Player indexes 0-10)
+            # Players are positioned with some relative spacing
+            # Note: Adjust the coordinates based on preferred formation nuances
+            players = [
+                np.array([midfield_x * 0.1, midfield_y]),  # Goalkeeper, slightly off the goal line at center
+                np.array([midfield_x, midfield_y]),  # Player exactly at midfield; this is the second player
+                np.array([midfield_x * 0.3, midfield_y * 0.75]),  # Defender
+                np.array([midfield_x * 0.3, midfield_y * 1.25]),  # Defender
+                np.array([midfield_x * 0.4, midfield_y * 0.5]),  # Defender
+                np.array([midfield_x * 0.4, midfield_y * 1.5]),  # Defender
+                np.array([midfield_x * 0.6, midfield_y * 0.6]),  # Midfielder
+                np.array([midfield_x * 0.6, midfield_y]),  # Midfielder, slightly ahead for kickoff
+                np.array([midfield_x * 0.6, midfield_y * 1.4]),  # Midfielder
+                np.array([midfield_x * 0.8, midfield_y * 1.2]),  # Midfielder
+                np.array([midfield_x * 0.8, midfield_y * 0.8]),  # Forward
+            ]
+            
+            players += [np.array([FIELD_WIDTH - players[0][0], players[0][1]]),      
+                np.array([FIELD_WIDTH - midfield_x * 0.8, midfield_y]),  # Player exactly at midfield; this is the second player
+                ] + [
+                np.array([FIELD_WIDTH - p[0], p[1]]) for p in players[2:11]
+            ]
 
-            return repeated_coordinates[:n]
+            return players
         
         # First 11 players will be left side and last 11 will be right side
         self.all_coordinates = deterministic_coordinate_generator() # posições de todos os jogadores
