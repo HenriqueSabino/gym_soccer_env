@@ -428,7 +428,7 @@ class SoccerEnv(AECEnv):
                 **colors
             )
 
-            field_image = np.array(field_image)
+            field_image = np.array(field_image).transpose((1, 0, 2))
 
             """Fetch the last frame from the base environment and render it to the screen."""
             try:
