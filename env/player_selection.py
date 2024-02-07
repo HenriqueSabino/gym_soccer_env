@@ -25,6 +25,11 @@ class PlayerSelector:
             "Number of agents must be even." + \
             "(i//2 + self.player_count//2) expression" + \
             "breaks with odd player_count."
+        
+        assert kickoff_player_index == 2 or kickoff_player_index == 3, \
+            "First player index must be 2 or 3." + \
+            "Index 0 and 1 gets the goalkeeper of team left and right." + \
+            "Index 2 and 3 gets the first not goalkeeper player in the player_order_to_play."
 
         self.player_count = len(player_names)
         
@@ -40,12 +45,18 @@ class PlayerSelector:
 
         self._kickoff_player_index = kickoff_player_index
         self._current_player_name = self.player_order_to_play[self._index]
-        self._x_foward_direction = np.array([1, 1])
-        self._is_left_team = True
-        self._currently_acting_team = TEAM_LEFT_NAME
-        self._not_currently_acting_team = TEAM_RIGHT_NAME
-        self._next_team_to_play_after_kickoff = TEAM_RIGHT_NAME
-        self._ignore_next = False
+        if kickoff_player_index % 2 == 0:
+            self._x_foward_direction = np.array([1, 1])
+            self._is_left_team = True
+            self._currently_acting_team = TEAM_LEFT_NAME
+            self._not_currently_acting_team = TEAM_RIGHT_NAME
+            self._next_team_to_play_after_kickoff = TEAM_RIGHT_NAME
+        elif kickoff_player_index % 2 != 0:
+            self._x_foward_direction = np.array([-1, 1])
+            self._is_left_team = False
+            self._currently_acting_team = TEAM_RIGHT_NAME
+            self._not_currently_acting_team = TEAM_LEFT_NAME
+            self._next_team_to_play_after_kickoff = TEAM_LEFT_NAME
 
         self.selector_logic_callback = self._before_kickoff_logic_callback
 
@@ -112,10 +123,18 @@ class PlayerSelector:
         self.selector_logic_callback = self._before_kickoff_logic_callback
 
         if team_to_play == TEAM_LEFT_NAME:
-            self._index = self._kickoff_player_index
+            self._index = 2 # second player of right team
+            self._x_foward_direction = np.array([1, 1])
+            self._is_left_team = True
+            self._currently_acting_team = TEAM_LEFT_NAME
+            self._not_currently_acting_team = TEAM_RIGHT_NAME
             self._next_team_to_play_after_kickoff = TEAM_RIGHT_NAME
-        else:
-            self._index = self._kickoff_player_index + 1
+        elif team_to_play == TEAM_RIGHT_NAME:
+            self._index = 3 # second player of left team
+            self._x_foward_direction = np.array([-1, 1])
+            self._is_left_team = False
+            self._currently_acting_team = TEAM_RIGHT_NAME
+            self._not_currently_acting_team = TEAM_LEFT_NAME
             self._next_team_to_play_after_kickoff = TEAM_LEFT_NAME
 
     

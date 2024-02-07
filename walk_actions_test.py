@@ -31,10 +31,14 @@ A 'action' passada para o 'step' é uma dupla contendo a direção do movimento 
 # actions = [(0,0)]*5 + [(2,0)] # OK
 # actions = [(0,0)]*5 + [(1,0)]*1 # OK
 # actions = [(0,0)]*5 + [(0,0)]*1 # OK
-actions = [(3,0)]*15 + [(0,0)]*17 + [(0,0)]*2 # OK
+# actions = [(3,0)]*15 + [(0,0)]*17 + [(0,0)]*2 # OK
+l = [(0,0)]*1 + [(3,0)]*21
+l = l * 6
+actions = [(0,0)]*1 + [(3,0)]*3 + l + [(0,0)] # [(0,3)]*1  
+actions = actions + [(0,0)]*1 + [(0,0)]*0 # OK
 
 # [2] Rodar uma sequencia de ações;
-env = gym.make("Soccer-v0", render_mode="human", observation_format='dict', color_option=2)
+env = gym.make("Soccer-v0", render_mode="rgb_array", observation_format='image', color_option=2)
 env.reset()
 initial_image = env.render()
 images: list[ImageType] = [initial_image]
