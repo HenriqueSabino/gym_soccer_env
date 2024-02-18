@@ -21,7 +21,6 @@ class FieldDrawer:
                    ball_color = "black"
                    ):
 
-        assert len(players) == 22
         field = Image.new("RGB", (self.width, self.height), field_bg_color)  # Green background for the field
 
         # Use PIL's drawing module to add field lines or other details
@@ -133,14 +132,18 @@ class FieldDrawer:
                        ) -> None:
         player_size = 1 * self.scale
         
-        for i in range(11):
+        for i in range(len(players) // 2):
             player = players[i]
+            print([
+                (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
+                (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
+            ])
             draw.ellipse(xy=[
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
                 (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
             ], fill=player_left_color)
 
-        for i in range(11, 22):
+        for i in range(len(players) // 2, len(players)):
             player = players[i]
             draw.ellipse(xy=[
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
