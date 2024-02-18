@@ -122,10 +122,12 @@ class SoccerEnv(AECEnv):
         
         # [2] - Build observation data structure
         self.observation = self.observation_builder.build_observation(
+            # relative player index in team
+            all_coordinates_index % (self.number_agents // 2),
             self.all_coordinates[0:(self.number_agents // 2)].copy(),
             self.all_coordinates[(self.number_agents // 2):self.number_agents].copy(),
             self.all_coordinates[-1].copy(),
-            all_coordinates_index >= 10
+            all_coordinates_index >= (self.num_agents // 2)
         )
         
         # [3] - Define for all agents rewards, cumulative rewards, etc.
@@ -241,10 +243,11 @@ class SoccerEnv(AECEnv):
 
         # [8] - Update observatio
         self.observation = self.observation_builder.build_observation(
+            all_coordinates_index % (self.number_agents // 2),
             self.all_coordinates[0:(self.number_agents // 2)].copy(),
             self.all_coordinates[(self.number_agents // 2):self.number_agents].copy(),
             self.all_coordinates[-1].copy(),
-            all_coordinates_index >= 10
+            all_coordinates_index >= (self.num_agents // 2)
         )
         # if debug:
         #     print("=-= DEBUG =-=")

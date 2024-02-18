@@ -3,7 +3,8 @@ import numpy as np
 
 class DictObservationBuilder(ObservationBuilder):
 
-    def build_observation(self, 
+    def build_observation(self,
+                          current_player_index: int,
                           left_team_positions: list, 
                           right_team_positions: list, 
                           ball_position: list,
@@ -12,6 +13,9 @@ class DictObservationBuilder(ObservationBuilder):
 
         if flip_side:
             left_team_positions, right_team_positions = right_team_positions, left_team_positions
+
+            # current player is always first in array
+            left_team_positions[0], left_team_positions[current_player_index] = left_team_positions[current_player_index], left_team_positions[0]
 
             ball_position[0] *= -1
             for pos in left_team_positions:
