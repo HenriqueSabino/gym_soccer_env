@@ -657,53 +657,52 @@ class SoccerEnv(AECEnv):
                     team: str
                    ):
         old_position = self.all_coordinates[-1].copy()
-        new_position = old_position + np.array(t_action_direction) * 2.5 * foward_direction
+        new_position = old_position + np.array(t_action_direction) * 10.5 * foward_direction
+        print("forward_direction", foward_direction)
+        print("t_action_direction", t_action_direction)
         new_position = np.clip(new_position, (0, 0), (FIELD_WIDTH, FIELD_HEIGHT))
 
+        # Calcula o ângulo entre a direção do passe e a posição atual do jogador
+        angle_center = np.arctan2(t_action_direction[1], t_action_direction[0]) + np.arctan2(foward_direction[1], foward_direction[0])
+        print("Angle center", angle_center)
+
         if team == TEAM_LEFT_NAME:
-            angle_center = np.arctan2(t_action_direction[1], t_action_direction[0])
-            min_distance = float('inf')
-            nearest_player_index = -1
-
-            for i, coordenadas in enumerate(self.all_coordinates[:(self.number_agents // 2)]):
-                is_near = SoccerEnv.is_near(new_position, coordenadas, 15.0)
-                if is_near:
-                    angle_to_player = np.arctan2(coordenadas[1] - new_position[1], coordenadas[0] - new_position[0])
-                    angle_difference = self.angle_difference(angle_to_player, angle_center)
-                    
-                    if angle_difference < np.pi / 4:  # Considera jogadores dentro de 45 graus do ângulo central
-                        distance = np.linalg.norm(new_position - coordenadas)
-
-                        if distance < min_distance:
-                            min_distance = distance
-                            nearest_player_index = i
-
-            if nearest_player_index != -1:
-                self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
-            else:
-                self.all_coordinates[-1] = new_position
+            players_range = range(11)
         else:
-            angle_center = np.arctan2(t_action_direction[1], t_action_direction[0])
-            min_distance = float('inf')
-            nearest_player_index = -1
+            players_range = range(11, 22)
 
-            for i, coordenadas in enumerate(self.all_coordinates[(self.number_agents // 2):self.number_agents]):
-                is_near = SoccerEnv.is_near(new_position, coordenadas, 15.0)
-                if is_near:
-                    angle_to_player = np.arctan2(coordenadas[1] - new_position[1], coordenadas[0] - new_position[0])
-                    angle_difference = self.angle_difference(angle_to_player, angle_center)
-                    
-                    if angle_difference < np.pi / 4:  # Considera jogadores dentro de 45 graus do ângulo central
-                        distance = np.linalg.norm(new_position - coordenadas)
+        min_angle_difference = float('inf')
+        nearest_player_index = -1
 
-                        if distance < min_distance:
-                            min_distance = distance
-                            nearest_player_index = i + (self.number_agents // 2)  # Ajusta o índice para o time oposto
+        for i in players_range:
+            coordenadas = self.all_coordinates[i]
+            is_near = SoccerEnv.is_near(old_position, coordenadas, 15.0)
+            #print("is_near", is_near)
+            if is_near:
+                vector_to_player = coordenadas - old_position
+                player_distance = np.linalg.norm(vector_to_player)
+                #print("vector_to_player", vector_to_player)
+                #print("player_distance", player_distance)
+                #print("coordenadas", coordenadas)
 
-            if nearest_player_index != -1:
-                self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
-            else:
-                self.all_coordinates[-1] = new_position
+                if player_distance != 0:  # Evita divisão por zero
+                    vector_to_player /= player_distance  # Normaliza o vetor para ter comprimento 1
+                    dot_product = np.dot(t_action_direction, vector_to_player)
+                    #print("dot_product", dot_product)
+                    if dot_product >= 0:  # Verifica se o jogador está na direção do passe
+                    # Calcula o ângulo entre o vetor posição do jogador e a direção do passe
+                        angle_to_player = np.arctan2(vector_to_player[1], vector_to_player[0])
+                        angle_difference = np.abs(self.angle_difference(angle_to_player, angle_center))
+                        #print("angle_difference", angle_difference)
+                        if angle_difference < min_angle_difference or (angle_difference == min_angle_difference and player_distance < min_distance_to_passer):
+                            min_angle_difference = angle_difference
+                            nearest_player_index = i
+                            min_distance_to_passer = player_distance
+    
+        if nearest_player_index != -1:
+            self.all_coordinates[-1] = self.all_coordinates[nearest_player_index]
+        else:
+            self.all_coordinates[-1] = new_position
 
 
     def __kick_ball(self, all_coordinates_index: int, foward_direction: np.array):
