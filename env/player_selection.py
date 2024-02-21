@@ -6,12 +6,16 @@ TOGGLE_X_ONLY = np.array([-1, 1])
 class PlayerSelector:
     def __init__(self, 
                  player_names: list[str],
-                 kickoff_player_index: int = 2
+                 left_start: bool,
+                 kickoff_player_index = 2,
+                 control_goalkeeper = False
                 ):
         """
         #### Params
         player_names(list[str]): list with all players names.\n
+        left_start(bool): Indicates if left of right team starts.\n
         kickoff_player_index(int): index to pick from sorted list.\n
+        control_goalkeeper(bool): if True, keeps the goal keeper in the seleciton.\n
         \n
         #### Warning
         kickoff_player_index must be even to start with left team \n
@@ -22,15 +26,28 @@ class PlayerSelector:
         The sort step alternates between left and right.
         """
         assert len(player_names) % 2 == 0, \
-            "Number of agents must be even." + \
+            "Number of agents must be even. \n" + \
             "(i//2 + self.player_count//2) expression" + \
-            "breaks with odd player_count."
+            "breaks with odd player_count. \n"
         
-        assert kickoff_player_index == 2 or kickoff_player_index == 3, \
-            "First player index must be 2 or 3." + \
-            "Index 0 and 1 gets the goalkeeper of team left and right." + \
-            "Index 2 and 3 gets the first not goalkeeper player in the player_order_to_play."
-
+        if not control_goalkeeper:
+            assert kickoff_player_index < len(player_names)-2, \
+                f"kickoff_player_index must be from 0 to {len(player_names)-3}. \n"
+        else:
+            assert kickoff_player_index < len(player_names), \
+                f"kickoff_player_index must be from 0 to {len(player_names)-1}. \n" 
+            
+            assert kickoff_player_index == 0 or kickoff_player_index == 1, \
+                "First player index must NOT be 0 or 1. \n" + \
+                "Index 0 and 1 gets the goalkeeper of team left and right respectively. \n" + \
+                "Index greater than 1 gets a player. \n"
+        
+        assert (left_start and kickoff_player_index % 2 == 0) or \
+            (not left_start and kickoff_player_index % 2 != 0), \
+            "kickoff_player_index must be even to start with left team. \n" + \
+            "odd indexes -> right_team \n" + \
+            "even indexes -> left_team \n"
+            
         self.player_count = len(player_names)
         
         # Sort player names in the playing rotation order of turns
@@ -40,23 +57,32 @@ class PlayerSelector:
             for i in range(self.player_count)
         ]
 
+        if not control_goalkeeper:
+            # Remove goalkeeper of rotation
+            self.player_order_to_play = self.player_order_to_play[2:]
+            self.player_count = len(player_names) - 2
+
         # _index keeps track of current player
         self._index = kickoff_player_index 
 
-        self._kickoff_player_index = kickoff_player_index
         self._current_player_name = self.player_order_to_play[self._index]
-        if kickoff_player_index % 2 == 0:
+        self._control_goalkeeper = control_goalkeeper
+        if left_start:
             self._x_foward_direction = np.array([1, 1])
             self._is_left_team = True
             self._currently_acting_team = TEAM_LEFT_NAME
             self._not_currently_acting_team = TEAM_RIGHT_NAME
             self._next_team_to_play_after_kickoff = TEAM_RIGHT_NAME
-        elif kickoff_player_index % 2 != 0:
+            self.left_team_kickoff_player_index = kickoff_player_index
+            self.right_team_kickoff_player_index = kickoff_player_index + 1
+        elif not left_start:
             self._x_foward_direction = np.array([-1, 1])
             self._is_left_team = False
             self._currently_acting_team = TEAM_RIGHT_NAME
             self._not_currently_acting_team = TEAM_LEFT_NAME
             self._next_team_to_play_after_kickoff = TEAM_LEFT_NAME
+            self.left_team_kickoff_player_index = kickoff_player_index -1
+            self.right_team_kickoff_player_index = kickoff_player_index
 
         self.selector_logic_callback = self._before_kickoff_logic_callback
 
@@ -108,9 +134,11 @@ class PlayerSelector:
         self.selector_logic_callback = self._after_kickoff_logic_callback
 
         if self._next_team_to_play_after_kickoff == TEAM_LEFT_NAME:
-            self._index = 0 -1 # Start moving the left team goalkeeper
+            self._index = 0 # Start moving the left team index 0 player
         else:
-            self._index = 1 -1 # Start moving the right team goalkeeper
+            self._index = 1 # Start moving the right team index 1 player
+        
+        self._index -= 1 # Remove the +1 in the next selection
 
 
     def kickoff_rotation(self, team_to_play: str):
@@ -123,14 +151,14 @@ class PlayerSelector:
         self.selector_logic_callback = self._before_kickoff_logic_callback
 
         if team_to_play == TEAM_LEFT_NAME:
-            self._index = 2 # second player of right team
+            self._index = self.left_team_kickoff_player_index
             self._x_foward_direction = np.array([1, 1])
             self._is_left_team = True
             self._currently_acting_team = TEAM_LEFT_NAME
             self._not_currently_acting_team = TEAM_RIGHT_NAME
             self._next_team_to_play_after_kickoff = TEAM_RIGHT_NAME
         elif team_to_play == TEAM_RIGHT_NAME:
-            self._index = 3 # second player of left team
+            self._index = self.right_team_kickoff_player_index
             self._x_foward_direction = np.array([-1, 1])
             self._is_left_team = False
             self._currently_acting_team = TEAM_RIGHT_NAME

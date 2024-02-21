@@ -2,7 +2,7 @@ from env.action_translator import ActionTranslator
 from env.player_action import PlayerAction
 import numpy as np
 
-from gymnasium.spaces.multi_discrete import MultiDiscrete
+from gymnasium import spaces
 
 class DiscreteActionTranslator(ActionTranslator):
     
@@ -20,17 +20,17 @@ class DiscreteActionTranslator(ActionTranslator):
             5: np.array([-1, -1]),  # Left-Up (45° movement)
             6: np.array([1, 1]),    # Right-Down (45° movement)
             7: np.array([-1, 1]),   # Left-Down (45° movement)
-            8: np.array([0, 0]),    # No movement
+            8: np.array([0, 0]),    # No direction
         }
 
         direction = DiscreteActionTranslator.__normalize_direction(action_to_direction[action[0]])
-           
+        
         playerAction = PlayerAction(direction)
 
         return playerAction
     
-    def action_space(self):
-        return MultiDiscrete([9, 5])
+    def action_space(self) -> spaces.MultiDiscrete:
+        return spaces.MultiDiscrete([9, 5])
     
     @staticmethod
     def __normalize_direction(direction):

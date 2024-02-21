@@ -1,7 +1,8 @@
 import numpy as np
 from PIL import Image, ImageDraw
 
-from env.constants import FIELD_WIDTH, FIELD_HEIGHT
+from env.constants import FIELD_WIDTH, FIELD_HEIGHT, \
+    GOAL_SIZE, TOP_GOAL_Y, BOTTOM_GOAL_Y
 
 
 class FieldDrawer:
@@ -79,7 +80,7 @@ class FieldDrawer:
         inner_goal_height = 18.3 * self.scale
         inner_goal_width = 5.5 * self.scale
 
-        goal_size = 7.32 * self.scale
+        # goal_size = GOAL_SIZE * self.scale
         goal_decoration_radius = 5 * self.scale
 
         # Left goal
@@ -99,8 +100,8 @@ class FieldDrawer:
         ], width=self.border_size)
 
         draw.line(xy=[
-            (0, self.height / 2 - goal_size / 2),
-            (0, self.height / 2 + goal_size / 2),
+            (0, TOP_GOAL_Y * self.scale),
+            (0, BOTTOM_GOAL_Y * self.scale),
         ], width=self.border_size, fill="red")
 
         # Right goal
@@ -120,8 +121,8 @@ class FieldDrawer:
         ], width=self.border_size)
 
         draw.line(xy=[
-            (self.width - self.border_size, self.height / 2 - goal_size / 2),
-            (self.width - self.border_size, self.height / 2 + goal_size / 2),
+            (self.width - self.border_size, TOP_GOAL_Y * self.scale),
+            (self.width - self.border_size, BOTTOM_GOAL_Y * self.scale),
         ], width=self.border_size, fill="blue")
 
     def __draw_players(self, 
@@ -134,10 +135,10 @@ class FieldDrawer:
         
         for i in range(len(players) // 2):
             player = players[i]
-            print([
-                (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
-                (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
-            ])
+            # print([
+            #     (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
+            #     (player[0] * self.scale + player_size, player[1] * self.scale + player_size)
+            # ])
             draw.ellipse(xy=[
                 (player[0] * self.scale - player_size, player[1] * self.scale - player_size),
                 (player[0] * self.scale + player_size, player[1] * self.scale + player_size)

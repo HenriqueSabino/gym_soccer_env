@@ -11,8 +11,8 @@ class ImageObservationBuilder(ObservationBuilder):
 
     def build_observation(self, current_player_index: int, left_team_positions: list, right_team_positions: list, ball_position: list, flip_side: bool):
         # TODO: Implement the image 120x80 with all channels described in the document
-        self.width = FIELD_WIDTH * self.scale
-        self.height = FIELD_HEIGHT * self.scale
+        # self.width = FIELD_WIDTH * self.scale
+        # self.height = FIELD_HEIGHT * self.scale
         self.field_drawer = FieldDrawer(self.scale, self.border_size)
         image = Image.new("RGB", (self.width, self.height), "white")
         # Converta a imagem em arrays numpy para cada canal de cor
@@ -23,19 +23,23 @@ class ImageObservationBuilder(ObservationBuilder):
         # Filling the image based on player positions and ball position
         ball_position = list(ball_position)
 
+        # print("[ImageObservationBuilder.build_observation] positions")
+        # print(right_team_positions)
+        # print(left_team_positions)
         if not flip_side:
             all_players = list(left_team_positions) + list(right_team_positions)
         else:
+            # print("[ImageObservationBuilder.build_observation] Fliping side")
             all_players = list(right_team_positions) + list(left_team_positions)
 
             for player in all_players:
-                player *= -1
+                player[0] = FIELD_WIDTH - player[0]
 
-            ball_position[0] *= -1
+            ball_position[0] = FIELD_WIDTH - ball_position[0]
         player_left_color: str = "red" 
         player_right_color: str = "Blue"
         ball_color = "black"
-        self.field_drawer._FieldDrawer__draw_players(draw, all_players,player_left_color, player_right_color)
+        self.field_drawer._FieldDrawer__draw_players(draw, all_players, player_left_color, player_right_color)
         self.field_drawer._FieldDrawer__draw_ball(draw, ball_position,ball_color)
 
         '''for player_position in left_team_positions:

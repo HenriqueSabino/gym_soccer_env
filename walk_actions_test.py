@@ -5,6 +5,7 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw
 from PIL.Image import Image as ImageType
+from env.constants import TEAM_LEFT_NAME, TEAM_RIGHT_NAME
 
 """ Esse arquivo serve para debugar o SoccerEnv.
 
@@ -19,26 +20,116 @@ A 'action' passada para o 'step' é uma dupla contendo a direção do movimento 
 
 # posição 0: direção do movimento (de 0 até 8)
 # posição 1: ação (de 0 (andar) até 4)
+
+action_to_direction = {
+    0: np.array([1, 0]),    # Right (foward)
+    1: np.array([-1, 0]),   # Left (backward)
+    2: np.array([0, -1]),   # Up
+    3: np.array([0, 1]),    # Down
+    4: np.array([1, -1]),   # Right-Up (45° movement)
+    5: np.array([-1, -1]),  # Left-Up (45° movement)
+    6: np.array([1, 1]),    # Right-Down (45° movement)
+    7: np.array([-1, 1]),   # Left-Down (45° movement)
+    8: np.array([0, 0]),    # No direction
+}
 """
 
+config = {}
+actions = []
+
+def first_action_test(team: str):
+
+  config["render_mode"] = 'rgb_array'
+  config["observation_format"] = 'dict'
+  config["num_agents"] = 11
+  config["control_goalkeeper"] = False
+
+  if team == TEAM_RIGHT_NAME:
+    config["left_start"] = False
+    config["first_kickoff_player_index"] = 3
+  else:
+    config["left_start"] = True
+    config["first_kickoff_player_index"] = 2
+  actions = [(0,0)]*5 + [(8,0)] # OK
+  # actions = [(0,0)]*5 + [(7,0)] # OK
+  # actions = [(0,0)]*5 + [(6,0)] # OK
+  # actions = [(0,0)]*5 + [(5,0)] # OK
+  # actions = [(0,0)]*5 + [(4,0)] # OK
+  # actions = [(0,0)]*5 + [(3,0)] # OK
+  # actions = [(0,0)]*5 + [(2,0)] # OK
+  # actions = [(0,0)]*5 + [(1,0)]*1 # OK
+  # actions = [(0,0)]*1 + [(0,0)]*5 # OK
+  # actions = [(3,0)]*15 + [(0,0)]*17 + [(0,0)]*2 # OK
+  return actions
+
+def right_team_tests():
+  config["render_mode"] = 'rgb_array'
+  config["observation_format"] = 'dict'
+  config["num_agents"] = 8
+  config["left_start"] = False
+  config["control_goalkeeper"] = False
+  config["first_kickoff_player_index"] = 3
+
+  walk_foward_once = [(0,0)]*1 + [(3,0)]*5
+  walk_up_once = [(2,0)]*1 + [(3,0)]*5
+  walk_down_once = [(3,0)]*1 + [(3,0)]*5
+  # actions =  [(0,0)]*4 + walk_foward_once * 10 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + [(4,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(4,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(4,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + [(6,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(6,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(6,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + [(3,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(3,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(3,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + [(8,3)] # OK assert can_kick_to_goal is None
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_up_once * 4 + [(8,3)] # OK assert can_kick_to_goal is None
+  # actions = [(0,0)]*4 + walk_foward_once * 10 + walk_down_once * 4 + [(8,3)] # OK assert can_kick_to_goal is None
+  return actions
+
+def left_team_tests():
+  config["render_mode"] = 'rgb_array'
+  config["observation_format"] = 'dict'
+  config["num_agents"] = 8
+  config["left_start"] = True
+  config["control_goalkeeper"] = False
+  config["first_kickoff_player_index"] = 2
+  walk_foward_once = [(0,0)]*1 + [(3,0)]*5
+  walk_up_once = [(2,0)]*1 + [(3,0)]*5
+  walk_down_once = [(3,0)]*1 + [(3,0)]*5
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(0,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(4,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(4,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(4,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(6,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(6,3)] # OK assert can_kick_to_goal == True
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(6,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(2,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(3,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(3,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(3,3)] # OK assert can_kick_to_goal == False
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + [(8,3)] # OK assert can_kick_to_goal is None
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_up_once * 4 + [(8,3)] # OK assert can_kick_to_goal is None
+  # actions = [(0,0)]*2 + walk_foward_once * 10 + walk_down_once * 4 + [(8,3)] # OK assert can_kick_to_goal is None
+  return actions
+
 # [1] Definir uma sequência de ações;
-# actions = [(0,0)]*5 + [(8,0)] # OK
-# actions = [(0,0)]*5 + [(7,0)] # OK
-# actions = [(0,0)]*5 + [(6,0)] # OK
-# actions = [(0,0)]*5 + [(5,0)] # OK
-# actions = [(0,0)]*5 + [(4,0)] # OK
-# actions = [(0,0)]*5 + [(3,0)] # OK
-# actions = [(0,0)]*5 + [(2,0)] # OK
-# actions = [(0,0)]*5 + [(1,0)]*1 # OK
-# actions = [(0,0)]*5 + [(0,0)]*1 # OK
-# actions = [(3,0)]*15 + [(0,0)]*17 + [(0,0)]*2 # OK
-l = [(0,0)]*1 + [(3,0)]*21
-l = l * 6
-actions = [(0,0)]*1 + [(3,0)]*3 + l + [(0,0)] # [(0,3)]*1  
-actions = actions + [(0,0)]*1 + [(0,0)]*0 # OK
+# actions = first_action_test(TEAM_LEFT_NAME)
+actions = right_team_tests()
+# actions = left_team_tests()
 
 # [2] Rodar uma sequencia de ações;
-env = gym.make("Soccer-v0", render_mode="rgb_array", observation_format='image', color_option=2)
+env = gym.make("Soccer-v0", **config)
 env.reset()
 initial_image = env.render()
 images: list[ImageType] = [initial_image]
