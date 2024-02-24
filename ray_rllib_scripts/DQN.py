@@ -11,8 +11,8 @@ from ray.tune.registry import register_env
 
 from ray.rllib.algorithms.dqn import DQNConfig, DQN
 
-from env_setup import env_creator, ENV_NAME
-from cnn import CNNModelV2
+from ray_rllib_scripts.env_setup import env_creator, ENV_NAME
+from ray_rllib_scripts.cnn import CNNModelV2
 
 username = "Ed" # Modifique aqui - Coloque seu nome de usuário
 

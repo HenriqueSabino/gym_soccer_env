@@ -190,20 +190,10 @@ class SoccerEnv(AECEnv):
         self.ball_posession = None
         self.last_ball_posession = None
 
-        # TODO ver se esse trecho fica aqui ou num wrapper que converte PIL em np.array
-        if self.observation_type == 'image':
-            obs_as_nparray = np.array(
-                self.observation.getdata(),
-                dtype=np.uint8
-            ).reshape(self.observation.size[0], self.observation.size[1], 3)
-            returned_obs = obs_as_nparray
-        elif self.observation_type == 'dict':
-            returned_obs = self.observation
-
         # Must return:
         # [0] observation(ObsType): An element of the environment's observation_space as the next observation due to the agent actions.
         # [1] info(dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
-        return returned_obs, self.infos
+        return self.observation, self.infos
         
 
 
@@ -330,16 +320,6 @@ class SoccerEnv(AECEnv):
             self.target_score == self.right_team_score
         )
 
-        # TODO ver se esse trecho fica aqui ou num wrapper que converte PIL em np.array
-        if self.observation_type == 'image':
-            obs_as_nparray = np.array(
-                self.observation.getdata(),
-                dtype=np.uint8
-            ).reshape(self.observation.size[0], self.observation.size[1], 3)
-            returned_obs = obs_as_nparray
-        elif self.observation_type == 'dict':
-            returned_obs = self.observation
-
         # Must return:
         # observation (ObsType): An element of the environment's observation_space as the next observation due to the agent actions.
         # reward (SupportsFloat): The reward as a result of taking the action.
@@ -349,7 +329,7 @@ class SoccerEnv(AECEnv):
         ##                # Can be used to end the episode prematurely before a terminal state is reached.
         ##                # If true, the user needs to call reset.
         # info (dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
-        return returned_obs, reward, terminated, False, {}
+        return self.observation, reward, terminated, False, {}
     
 
     def __initialize_players(self, num_agents: int, left_start: bool):

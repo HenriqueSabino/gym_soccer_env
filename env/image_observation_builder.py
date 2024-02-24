@@ -11,8 +11,8 @@ class ImageObservationBuilder(ObservationBuilder):
 
     def build_observation(self, current_player_index: int, left_team_positions: list, right_team_positions: list, ball_position: list, flip_side: bool):
         # TODO: Implement the image 120x80 with all channels described in the document
-        # self.width = FIELD_WIDTH * self.scale
-        # self.height = FIELD_HEIGHT * self.scale
+        self.width = FIELD_WIDTH # * self.scale
+        self.height = FIELD_HEIGHT # * self.scale
         self.field_drawer = FieldDrawer(self.scale, self.border_size)
         image = Image.new("RGB", (self.width, self.height), "white")
         # Converta a imagem em arrays numpy para cada canal de cor
