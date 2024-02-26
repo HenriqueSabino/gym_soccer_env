@@ -1,0 +1,31 @@
+total_steps: 100000
+log_interval: 10000
+save_interval: 10000
+eval_interval: 10000
+eval_episodes: 5
+video_interval: false
+video_frames: 500
+name: dqn
+model:
+  _target_: MARL_codebase.algorithms.dqn.model.QNetwork
+  layers:
+  - 64
+  - 64
+  parameter_sharing: false
+  use_orthogonal_init: true
+  device: cpu
+training_start: 2000
+buffer_size: 100000
+optimizer: Adam
+lr: 0.0003
+gamma: 0.99
+batch_size: 128
+grad_clip: false
+use_proper_termination: true
+standardize_returns: true
+eps_decay_style: linear
+eps_start: 1.0
+eps_end: 0.05
+eps_decay: 6.5
+greedy_epsilon: 0.05
+target_update_interval_or_tau: 200

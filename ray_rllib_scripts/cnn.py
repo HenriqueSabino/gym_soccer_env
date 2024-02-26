@@ -22,9 +22,9 @@ class CNNModelV2(TorchModelV2, nn.Module):
     
     def forward(self, input_dict, state, seq_lens):
         x = input_dict["obs"].permute(0, 3, 1, 2)
-        print(x.shape)
-        print(x.size)
-        input("parou aqui")
+        # print(x.shape)
+        # print(x.size)
+        # input("parou aqui")
         model_out = self.model(x)
         # model_out = self.model(input_dict["obs"].permute(0, 3, 1, 2))
         self._value_out = self.value_fn(model_out)

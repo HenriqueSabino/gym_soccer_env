@@ -1,5 +1,5 @@
+
 from env.observation_builder import ObservationBuilder
-import numpy as np
 from env.constants import FIELD_WIDTH, FIELD_HEIGHT
 
 class DictObservationBuilder(ObservationBuilder):
@@ -13,16 +13,16 @@ class DictObservationBuilder(ObservationBuilder):
                           right_team_positions: list, 
                           ball_position: list,
                           flip_side: bool
-                         ):
-        # self.width = FIELD_WIDTH * self.scale
-        # self.height = FIELD_HEIGHT * self.scale
+                          ) -> dict:
 
         if flip_side:
             left_team_positions, right_team_positions = right_team_positions, left_team_positions
 
-            # current player is always first in array
-            left_team_positions[0], left_team_positions[current_player_index] = left_team_positions[current_player_index], left_team_positions[0]
+            # swaap player at index 0 with player at index current_player_index
+            # current player is always first in array <---- why?
+            # left_team_positions[0], left_team_positions[current_player_index] = left_team_positions[current_player_index], left_team_positions[0]
 
+            # mirror positions around vertical axis at x = FIELD_WIDTH//2
             for pos in left_team_positions:
                 pos[0] = FIELD_WIDTH - pos[0]
 
