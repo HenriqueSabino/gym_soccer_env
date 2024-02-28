@@ -215,7 +215,7 @@ def main(env, logger, **cfg):
             
         # input(">>> dqn.train.main 11")
         
-    torch.save(model.state_dict(), "trained_model.tch")
+    torch.save(model.state_dict(), "./trained_model.tch")
 
 
 if __name__ == "__main__":
