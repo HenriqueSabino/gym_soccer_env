@@ -14,7 +14,7 @@ algorithm:
     device : "cpu"  # a pytorch device ("cpu" or "cuda")
 
   training_start : 2000
-  buffer_size : 100000
+  buffer_size : 10_000 # 100_000
 
   optimizer : "Adam"
   lr : 3.e-4

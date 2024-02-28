@@ -42,6 +42,7 @@ class MultiAgentNetwork(ABC, nn.Module):
 class MultiAgentFCNetwork(MultiAgentNetwork):
     def __init__(self, input_sizes, idims, output_sizes, use_orthogonal_init=True):
         super().__init__()
+        # len(input_sizes) == len(output_sizes) == número de agentes no ambiente
         assert len(input_sizes) == len(output_sizes), "Expect same number of input and output sizes"
         self.independent = nn.ModuleList()
 

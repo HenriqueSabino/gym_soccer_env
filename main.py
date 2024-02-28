@@ -27,7 +27,7 @@ params = {
     'num_agents' : 10,
     'target_score': 1,
     'left_start': True,
-    'first_kickoff_player_index': 2,
+    'first_player_index': 2,
     'control_goalkeeper': False,
     'color_option': 2 # Options: [0, 1, 2]
 }

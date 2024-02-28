@@ -46,10 +46,10 @@ def first_action_test(team: str):
 
   if team == TEAM_RIGHT_NAME:
     config["left_start"] = False
-    config["first_kickoff_player_index"] = 3
+    config["first_player_index"] = 3
   else:
     config["left_start"] = True
-    config["first_kickoff_player_index"] = 2
+    config["first_player_index"] = 2
   actions = [(0,0)]*5 + [(8,0)] # OK
   # actions = [(0,0)]*5 + [(7,0)] # OK
   # actions = [(0,0)]*5 + [(6,0)] # OK
@@ -68,7 +68,7 @@ def right_team_tests():
   config["num_agents"] = 8
   config["left_start"] = False
   config["control_goalkeeper"] = False
-  config["first_kickoff_player_index"] = 3
+  config["first_player_index"] = 3
 
   walk_foward_once = [(0,0)]*1 + [(3,0)]*5
   walk_up_once = [(2,0)]*1 + [(3,0)]*5
@@ -99,7 +99,7 @@ def left_team_tests():
   config["num_agents"] = 8
   config["left_start"] = True
   config["control_goalkeeper"] = False
-  config["first_kickoff_player_index"] = 2
+  config["first_player_index"] = 2
   walk_foward_once = [(0,0)]*1 + [(3,0)]*5
   walk_up_once = [(2,0)]*1 + [(3,0)]*5
   walk_down_once = [(3,0)]*1 + [(3,0)]*5

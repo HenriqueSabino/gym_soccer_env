@@ -12,15 +12,12 @@ class DictObservationBuilder(ObservationBuilder):
                           left_team_positions: list, 
                           right_team_positions: list, 
                           ball_position: list,
-                          flip_side: bool
+                          flip_side: bool,
+                          colors: dict[str, any]
                           ) -> dict:
-
+        # old_ball_position = ball_position.copy()
         if flip_side:
             left_team_positions, right_team_positions = right_team_positions, left_team_positions
-
-            # swaap player at index 0 with player at index current_player_index
-            # current player is always first in array <---- why?
-            # left_team_positions[0], left_team_positions[current_player_index] = left_team_positions[current_player_index], left_team_positions[0]
 
             # mirror positions around vertical axis at x = FIELD_WIDTH//2
             for pos in left_team_positions:
@@ -29,8 +26,9 @@ class DictObservationBuilder(ObservationBuilder):
             for pos in right_team_positions:
                 pos[0] = FIELD_WIDTH - pos[0]
             
-            ball_position[0] =  FIELD_WIDTH - ball_position[0]
+            ball_position[0] = FIELD_WIDTH - ball_position[0]
 
+        # print(f"antes {old_ball_position} | flip: {flip_side} | depois: {ball_position}")
         return {
             "left_team": left_team_positions,
             "right_team": right_team_positions,

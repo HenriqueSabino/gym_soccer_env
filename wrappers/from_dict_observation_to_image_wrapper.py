@@ -56,10 +56,11 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
         assert isinstance(observation, dict), "Observation must be dict type"
 
         shape = (consts.FIELD_WIDTH+1, consts.FIELD_HEIGHT+1, 4)
-        image = np.zeros(shape, dtype=np.float32) # TODO: usar np.uint8 quando op wrapper que converte de uint8 para float32 ficar pronto
+        image = np.zeros(shape, dtype=np.uint8)
 
-        current_player = observation["left_team"][0]
-        image[int(current_player[1]), int(current_player[0]), 0] = 255
+        obs_index, _ = self.env.player_name_to_obs_index[self.agent_selection]
+        current_player = observation["left_team"][obs_index]
+        image[int(current_player[0]), int(current_player[1]), 0] = 255
 
         for player_position in observation["left_team"]:
             x, y = player_position

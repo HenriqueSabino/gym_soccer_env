@@ -155,19 +155,33 @@ class FileSystemLogger(Logger):
     def log_metrics(self, metrics):
         # input(">>> AQUI FileSystemLogger 3")
         d = squash_info(metrics)
-        df = pd.DataFrame.from_dict([d])[
-            ["environment_steps"]
-            + sorted([k for k in d.keys() if k != "environment_steps"])
-        ]
+        columns = list(d.keys())
+        columns.remove("environment_steps")
+        columns = sorted(columns)
+        columns = ["environment_steps"] + columns
+        df = pd.DataFrame.from_dict([d])[columns]
+        
+        # print(df)
+        # print(d)
+
+        if "mean_episode_return" in d.keys():
+            episode_return = d["mean_episode_return"]
+        elif "mean_episode_returns" in d.keys():
+            episode_return = d["mean_episode_returns"]
+        elif "episode_return" in d.keys():
+            episode_return = d["episode_return"]
+        else:
+            raise KeyError("Didct must contain episode_return or mean_episode_return or mean_episode_returns key")
+        
         # Since we are appending, we only want to write the csv headers if the file does not already exist
         # the following codeblock handles this automatically
         with open(self.results_path, "a") as f:
             df.to_csv(f, header=f.tell() == 0, index=False)
-
+        # input(">>> analisar d e df")
         self.print_progress(
             d["updates"],
             d["environment_steps"],
-            d["mean_episode_returns"],
+            episode_return,
             len(metrics) - 1,
         )
 

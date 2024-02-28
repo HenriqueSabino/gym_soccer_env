@@ -13,7 +13,7 @@ class VideoRecorder:
         self.frames = []
 
     def record_frame(self, env):
-        self.frames.append(env.render(mode="rgb_array"))
+        self.frames.append(env.render()) # expect mode="rgb_array"
 
     def save(self, filename):
         imageio.mimsave(f"{filename}", self.frames, fps=self.fps)
@@ -25,12 +25,20 @@ def record_episodes(env, act_func, n_timesteps, path):
 
     for _ in range(n_timesteps):
         if done:
-            obs = env.reset()
-            done = False
+            env.reset()
+            obs, r, done, truncated, infos = env.last()
             recorder.record_frame(env)
         else:
             with torch.no_grad():
-                obs, _, done, _ = env.step(act_func(obs))
+                act = act_func(obs)
+                if isinstance(act, int) or isinstance(act, np.int64):
+                    print(f"act: {act} | type {type(act)}")
+                    env.step(act)
+                else:
+                    print(f"act: {act} | len {len(act)}")
+                    for a in act:
+                        env.step(a)
+                obs, r, done, truncated, infos = env.last()
             recorder.record_frame(env)
 
     env.close()

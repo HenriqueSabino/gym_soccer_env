@@ -14,7 +14,8 @@ class ImageObservationBuilder(ObservationBuilder):
                           left_team_positions: list, 
                           right_team_positions: list, 
                           ball_position: list, 
-                          flip_side: bool
+                          flip_side: bool,
+                          colors: dict[str, any]
                           ) -> Image:
 
         self.field_drawer = FieldDrawer(self.scale, self.border_size)
@@ -37,11 +38,11 @@ class ImageObservationBuilder(ObservationBuilder):
 
             ball_position[0] = FIELD_WIDTH - ball_position[0]
 
-            self.colors["player_left_color"], self.colors["player_right_color"] = self.colors["player_right_color"], self.colors["player_left_color"]
+            colors["player_left_color"], colors["player_right_color"] = colors["player_right_color"], colors["player_left_color"]
         else:
             all_players = list(left_team_positions) + list(right_team_positions)
 
-        self.field_drawer._FieldDrawer__draw_players(draw, all_players, self.colors["player_left_color"], self.colors["player_right_color"])
-        self.field_drawer._FieldDrawer__draw_ball(draw, ball_position, self.colors["ball_color"])
+        self.field_drawer._FieldDrawer__draw_players(draw, all_players, colors["player_left_color"], colors["player_right_color"])
+        self.field_drawer._FieldDrawer__draw_ball(draw, ball_position, colors["ball_color"])
         
         return image

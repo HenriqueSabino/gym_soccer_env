@@ -4,6 +4,10 @@ from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
 
 class MaxStepsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
     def __init__(self, env: AECEnv[AgentID, ObsType, ActionType], max_steps: int):
+        """
+        env (AECEnv): multi-agent env
+        max_steps (int): max number of steps before turn truncations[agent] True.
+        """
         assert isinstance(
             env, AECEnv
         ), "AssertOutOfBoundsWrapper is only compatible with AEC environments"
@@ -12,12 +16,12 @@ class MaxStepsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         self.max_steps = max_steps
         self.current_steps = 0
 
-    def step(self, action):
+    def step(self, action: ActionType):
 
         self.current_steps += 1
 
-        # Como atualizar o truncations (ver AssertOutOfBoundsWrapper e OrderEnforcingWrapper)
         truncated = self.current_steps >= self.max_steps
+        self.env.truncations[self.env.agent_selection] = truncated
 
         super().step(action)
 

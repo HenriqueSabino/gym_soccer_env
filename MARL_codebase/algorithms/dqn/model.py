@@ -8,12 +8,9 @@ from torch import optim
 import torch.nn as nn
 import torch.nn.functional as F
 
-from fastmarl.utils.models import MultiAgentSEPSNetwork, MultiAgentFCNetwork
-from fastmarl.utils.standarize_stream import RunningMeanStd
-
-# from utils.models import MultiAgentSEPSNetwork, MultiAgentFCNetwork
-# from utils.standarize_stream import RunningMeanStd
-# import numpy as np
+from MARL_codebase.utils.models import MultiAgentSEPSNetwork, MultiAgentFCNetwork
+from MARL_codebase.utils.standarize_stream import RunningMeanStd
+import numpy as np
 
 class QNetwork(nn.Module):
     def __init__(
@@ -33,15 +30,18 @@ class QNetwork(nn.Module):
 
         self.action_space = action_space
 
-        self.n_agents = 6 # 1 # len(obs_space)
-        obs_shape = [ flatdim(obs_space) ] * self.n_agents # [flatdim(o) for o in np.array(obs_space)]
-        action_shape = [ action_space.n ] * self.n_agents # [flatdim(a) for a in np.array(action_space)]
-
-
         # print("@@@@@@@@@")
         # print(obs_space)
         # print(action_space)
         # print("@@@@@@@@@")
+        # print(f"Lista com obs de cada agente: {[flatdim(o) for o in np.array(obs_space)]}")
+        # print(f"Espaço de ações: {action_space.n}")
+        # input(">>> Ver obs_shape e action_shape")
+        self.n_agents = 4 # 1 # len(obs_space)
+        obs_shape = [ flatdim(obs_space) ] * self.n_agents # [flatdim(o) for o in np.array(obs_space)]
+        action_shape = [ action_space.n ] * self.n_agents # [flatdim(a) for a in np.array(action_space)]
+
+
         # print(cfg)
         # print(obs_space.shape)
         # print(action_space.n)
@@ -93,23 +93,52 @@ class QNetwork(nn.Module):
     def forward(self, inputs):
         raise NotImplemented("Forward not implemented. Use act or update instead!")
 
-    def act(self, inputs, epsilon):
+    def act(self, obs, epsilon):
         if epsilon > random.random():
             actions = self.action_space.sample()
             return actions
         with torch.no_grad():
-            inputs = [torch.from_numpy(i).to(self.device) for i in inputs]
+            inputs = []
+            # Assume que todos os agentes tem a mesma observação
+            # Coloca a mesma observação n vezes como input da rede
+            for _ in range(self.n_agents):
+                inputs.append(torch.from_numpy(obs).to(self.device))
             actions = [x.argmax(-1).cpu().item() for x in self.critic(inputs)]
         return actions
     
     def _compute_loss(self, batch):
-        obs = [batch[f"obs{i}"] for i in range(self.n_agents)]
-        nobs = [batch[f"next_obs{i}"] for i in range(self.n_agents)]
-        action = torch.stack([batch[f"act{i}"].long() for i in range(self.n_agents)])
-        rewards = torch.stack(
-            [batch["rew"][:, i].view(-1, 1) for i in range(self.n_agents)]
-        )
+        # Assume que todos os agentes tem a mesma observação
+        # Coloca a mesma observação n vezes como input da rede
+        # obs = [batch[f"obs{i}"] for i in range(self.n_agents)]
+        obs = [ batch["obs"] ] * self.n_agents
+        # nobs = [batch[f"next_obs{i}"] for i in range(self.n_agents)]
+        nobs = [ batch["next_obs"] ] * self.n_agents
+        
+        # print(batch.keys())
+        # print(batch["act"])
+        # print(batch["act"].long())
+        action = torch.stack([batch["act"].long()])
+        # print(action)
+        # input(">>> ")
+        # action = torch.stack([batch[f"act{i}"].long() for i in range(self.n_agents)])
+        
+        # print(batch["rew"])
+        # print(batch["rew"].repeat(1, self.n_agents))
+        # for i in range(self.n_agents):
+            # print(batch["rew"].repeat(1, self.n_agents)[:, i])
+        # print("@@@@@@@@@@@")
+        # print(batch["rew"].repeat(1, self.n_agents)[:, 1].view(-1, 1))
+        # input(">>> ")
+        # rewards = torch.stack(
+        #     [batch["rew"][:, i].view(-1, 1) for i in range(self.n_agents)]
+        # )
+        rewards = torch.stack([batch["rew"]] * self.n_agents)
+
+        # print(batch["done"])
+        # input(">>> ")
         dones = batch["done"].unsqueeze(0).repeat(self.n_agents, 1, 1)
+        # print(dones)
+        # input(">>> ")
 
         with torch.no_grad():
             q_tp1_values = torch.stack(self.critic(nobs))

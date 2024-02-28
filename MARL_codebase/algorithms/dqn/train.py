@@ -45,13 +45,18 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon):
         done = False
         env.reset()
         obs, reward, done, truncated, info = env.last()
-        env.step(0) # Para garantir kickoff (TODO: ver como fazer kickoff com qualquer ação)
-        while not done:
+        while not done and not truncated:
             # input(">>>")
             with torch.no_grad():
                 act = model.act(obs, greedy_epsilon)
                 # print("ACT from dqn: ", act)
-            env.step(act)
+            if isinstance(act, int) or isinstance(act, np.int64):
+                print(f"act: {act} | type {type(act)}")
+                env.step(act)
+            else:
+                print(f"act: {act} | len {len(act)}")
+                for a in act:
+                    env.step(a)
             obs, _, done, truncated, info = env.last()
 
         infos.append(info)
@@ -65,9 +70,16 @@ def main(env, logger, **cfg):
 
     # replay buffer:
     env_dict = create_env_dict(env, int_type=np.uint8, float_type=np.float32)
-    force_coop = wrappers.is_wrapped_by(env, wrappers.CooperativeReward)
-    if not force_coop: env_dict["rew"]["shape"] = env.n_agents
+
+    # Esse trecho altera o shape de "rew" e por isso espera armazenar uma obs pra cada n_agent no buffer
+    # force_coop = wrappers.is_wrapped_by(env, wrappers.CooperativeReward)
+    # if not force_coop: env_dict["rew"]["shape"] = env.n_agents
+
+    # print(cfg.buffer_size)
+    # print(env_dict)
     rb = ReplayBuffer(cfg.buffer_size, env_dict)
+    # print(rb)
+    # input(">>> ver rb")
     before_add = create_before_add_func(env)
 
 
@@ -89,66 +101,101 @@ def main(env, logger, **cfg):
     env.reset()
     obs, reward, terminatd, truncated, reset_infos = env.last()
 
-    print("@@@@@@@@@@@@@@@")
-    print(cfg)
-    print("@@@@@@@@@@@@@@@")
-    print(env)
-    print(obs)
-    print(obs[0].shape)
-    print("@@@@@@@@@@@@@@@")
+    # print("@@@@@@@@@@@@@@@")
+    # print(cfg)
+    # print("@@@@@@@@@@@@@@@")
+    # print(env)
+    # print(obs)
+    # print(obs.shape)
+    # print("@@@@@@@@@@@@@@@")
 
     input(">>> dqn.train.main 1")
     
 
     for j in range(cfg.total_steps + 1):
         
-        input(">>> dqn.train.main 2")
+        # input(">>> dqn.train.main 2")
         if j % cfg.eval_interval == 0:
             infos = _evaluate(env, model, cfg.eval_episodes, cfg.greedy_epsilon)
-            
-            input(">>> dqn.train.main 3")
-            infos.append(
+            # infos = _evaluate(env, model, 1, cfg.greedy_epsilon)
+
+            # input(">>> dqn.train.main 3")
+            # Prepare data from infos to pass to the logger
+            prepared_info_of_each_episode = []
+            for i in infos:
+                # print(i)
+                episode_info = {}
+                # selected_player_name = env.agent_selection
+                # episode_info["episode_return"]      = i[selected_player_name]["episode_return"]
+                # episode_info["team_episode_return"] = i[selected_player_name]["team_episode_return"]
+                # episode_info["episode_length"]      = i[selected_player_name]["episode_length"]
+                # episode_info["episode_time"]        = i[selected_player_name]["episode_time"]
+                episode_info["episode_return"]      = i["episode_return"]
+                episode_info["team_episode_return"] = i["team_episode_return"]
+                episode_info["episode_length"]      = i["episode_length"]
+                episode_info["episode_time"]        = i["episode_time"]
+
+                prepared_info_of_each_episode.append(episode_info)
+            prepared_info_of_each_episode.append(
                 {'updates': j, 'environment_steps': j, 'epsilon': eps_sched(j)}
             )
-            
-            input(">>> dqn.train.main 4")
-            logger.log_metrics(infos)
+            # print("infos")
+            # print(prepared_info_of_each_episode)
+            # print("=------=")
+            # input(">>> dqn.train.main 4")
+            logger.log_metrics(prepared_info_of_each_episode)
 
         
-        input(">>> dqn.train.main 5")
+        # input(">>> dqn.train.main 5")
         act = model.act(obs, epsilon=eps_sched(j))
-        input(">>> dqn.train.main 6")
-        env.step(act)
-        next_obs, rew, done, truncated, info = env.last()
-        input(">>> dqn.train.main 7")
-
-        if (cfg.use_proper_termination and done and info.get("TimeLimit.truncated", False)):
-            del info["TimeLimit.truncated"]
-            proper_done = False
-        elif cfg.use_proper_termination == "ignore":
-            proper_done = False
+        # input(">>> dqn.train.main 6")
+        if isinstance(act, int) or isinstance(act, np.int64):
+            # print(f"act: {act} | type {type(act)}")
+            env.step(act)
         else:
-            proper_done = done
-        input(">>> dqn.train.main 8")
+            # print(f"act: {act} | len {len(act)}")
+            for a in act:
+                env.step(a)
+        next_obs, rew, done, truncated, info = env.last()
+        # input(">>> dqn.train.main 7")
+
+        # if (cfg.use_proper_termination and (done or truncated) and info.get("TimeLimit.truncated", False)):
+        #     del info["TimeLimit.truncated"]
+        #     proper_done = False
+        # if cfg.use_proper_termination and truncated:
+        #     proper_done = False
+        # elif cfg.use_proper_termination == "ignore":
+        #     proper_done = False
+        # else:
+        #     proper_done = done
+        # input(">>> dqn.train.main 8")
+        # print(obs)
+        # print(act)
+        # print(next_obs)
+        # print(rew)
+        # print(proper_done)
         rb.add(
-            **before_add(obs=obs, act=act, next_obs=next_obs, rew=rew, done=proper_done)
+            **before_add(obs=obs, act=act, next_obs=next_obs, rew=rew, done=done)
         )
         
 
         if j > cfg.training_start:
-            batch = rb.sample(cfg.batch_size)
+            batch: dict[str, np.ndarray] = rb.sample(cfg.batch_size)
+            # print(type(batch))
+            # print(batch)
+            # input(">>> anotar typehint do batch")
             batch = {
                 k: torch.from_numpy(v).to(cfg.model.device) for k, v in batch.items()
             }
             model.update(batch)
-        input(">>> dqn.train.main 9")
+        # input(">>> dqn.train.main 9")
         
-        if done:
+        if done or truncated:
             env.reset()
             obs, reward, terminatd, truncated, info = env.last()
         else:
             obs = next_obs
-        input(">>> dqn.train.main 10")
+        # input(">>> dqn.train.main 10")
 
         if cfg.video_interval and j % cfg.video_interval == 0:
             record_episodes(
@@ -157,7 +204,7 @@ def main(env, logger, **cfg):
                 cfg.video_frames,
                 f"./videos/step-{j}.mp4",
             )
-        input(">>> dqn.train.main 11")
+        # input(">>> dqn.train.main 11")
 
 
 if __name__ == "__main__":

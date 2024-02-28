@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 
 from env.constants import TEAM_LEFT_NAME, TEAM_RIGHT_NAME
@@ -8,7 +9,8 @@ class PlayerSelector:
                  player_names: list[str],
                  left_start: bool,
                  kickoff_player_index = 2,
-                 control_goalkeeper = False
+                 control_goalkeeper = False,
+                 skip_kickoff = True
                 ):
         """
         #### Params
@@ -16,6 +18,7 @@ class PlayerSelector:
         left_start(bool): Indicates if left of right team starts.\n
         kickoff_player_index(int): index to pick from sorted list.\n
         control_goalkeeper(bool): if True, keeps the goal keeper in the seleciton.\n
+        skip_kickoff(bool): if True, skips kickoff rotation in toggle.\n
         \n
         #### Warning
         kickoff_player_index must be even to start with left team \n
@@ -84,7 +87,14 @@ class PlayerSelector:
             self.left_team_kickoff_player_index = kickoff_player_index -1
             self.right_team_kickoff_player_index = kickoff_player_index
 
-        self.selector_logic_callback = self._before_kickoff_logic_callback
+        self._skip_kickoff_rotation = skip_kickoff
+        if skip_kickoff:
+            self.selector_logic_callback = self._after_kickoff_logic_callback
+            self._is_using_playing_rotation = True
+        else:
+            self.selector_logic_callback = self._before_kickoff_logic_callback
+            self._is_using_playing_rotation = False
+            
 
 
     def get_info(self) -> tuple[str, bool, np.array]:
@@ -125,6 +135,20 @@ class PlayerSelector:
         print("Trocou time")
 
 
+    # Uncomment if you need to use
+    # def toggle_rotation(self, team_to_play: Optional[str] = None):
+
+    #     # toggle to same rotation when _skip_kickoff_rotation is True
+    #     if self._skip_kickoff_rotation:
+    #         self.kickoff_rotation(team_to_play)
+    #         self.playing_rotation()
+    #     else:
+    #         if self._is_using_playing_rotation:
+    #             self.kickoff_rotation(team_to_play)
+    #         else:
+    #             self.playing_rotation()
+
+
     def playing_rotation(self):
         """
         #### Called after kickoff
@@ -132,6 +156,7 @@ class PlayerSelector:
         Change selector logic callback to pick next player considering playing stage.
         """
         self.selector_logic_callback = self._after_kickoff_logic_callback
+        self._is_using_playing_rotation = True
 
         if self._next_team_to_play_after_kickoff == TEAM_LEFT_NAME:
             self._index = 0 # Start moving the left team index 0 player
@@ -149,6 +174,7 @@ class PlayerSelector:
         Needs to recive team_to_play because this class doesn't know who has scored a goal.
         """
         self.selector_logic_callback = self._before_kickoff_logic_callback
+        self._is_using_playing_rotation = False
 
         if team_to_play == TEAM_LEFT_NAME:
             self._index = self.left_team_kickoff_player_index
@@ -168,7 +194,8 @@ class PlayerSelector:
     
     def _before_kickoff_logic_callback(self):
         # Uncomment the line below if all players of the left team should play before kickoff
-        # self_instance._index = (self_instance._index + 2) % self.player_count
+        # Remember to self._index -= 2 inside kickoff_rotation to counter the first +2
+        # self._index = (self._index + 2) % self.player_count
         self._current_player_name = self.player_order_to_play[self._index]
 
 
