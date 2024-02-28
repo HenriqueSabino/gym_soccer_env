@@ -23,7 +23,7 @@ from MARL_codebase.utils.loggers import FileSystemLogger
 # os.system(command)
 
 MARL_dqn_config = {
-    'total_steps': 8_000, # 100_000, 
+    'total_steps': 100_000, 
     'log_interval': 10000, 
     'save_interval': 10000, 
     'eval_interval': 10000, 
@@ -64,7 +64,8 @@ params = {
     'first_player_index': 2,
     'control_goalkeeper': False,
     'color_option': 2, # Options: [0, 1, 2]
-    'skip_kickoff': True
+    'skip_kickoff': True,
+    'ball_posession_reward': True,
 }
 
 env = make_raw_env(params)

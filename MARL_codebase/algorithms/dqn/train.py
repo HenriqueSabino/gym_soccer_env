@@ -146,6 +146,7 @@ def main(env, logger, **cfg):
             # print("=------=")
             # input(">>> dqn.train.main 4")
             logger.log_metrics(prepared_info_of_each_episode)
+            print(f"eval episode return: {episode_info["episode_return"]}")
 
         
         # input(">>> dqn.train.main 5")
@@ -211,7 +212,10 @@ def main(env, logger, **cfg):
                 cfg.video_frames,
                 f"./videos/step-{j}.mp4",
             )
+            
         # input(">>> dqn.train.main 11")
+        
+    torch.save(model.state_dict(), "trained_model.tch")
 
 
 if __name__ == "__main__":
