@@ -6,7 +6,7 @@ from wrappers.flatten_action_wrapper import FlattenActionWrapper
 from wrappers.from_dict_observation_to_image_wrapper import FromDictObservationToImageWrapper
 from wrappers.prepare_observation_to_marl_dqn_wrapper import PrepareObservationToMarlDqnWrapper
 from wrappers.max_steps_wrapper import MaxStepsWrapper
-from wrappers.record_episode_statistics_wrapper import RecordEpisodeStatistics
+from wrappers.record_episode_statistics_wrapper import RecordEpisodeStatisticsWrapper
 
 from pettingzoo.utils.conversions import aec_to_parallel
 from pettingzoo.utils import wrappers as pettingzoo_wrappers
@@ -74,7 +74,7 @@ env = FlattenActionWrapper(env)
 env = FromDictObservationToImageWrapper(env)
 env = PrepareObservationToMarlDqnWrapper(env)
 env = MaxStepsWrapper(env, max_steps=800)
-env = RecordEpisodeStatistics(env, max_episodes=100)
+env = RecordEpisodeStatisticsWrapper(env, max_episodes=100)
 # env = aec_to_parallel(env)
 env.reset()
 

@@ -4,9 +4,9 @@ from torch.distributions import Categorical
 import torch.nn as nn
 from torch import optim
 
-from fastmarl.utils.models import MultiAgentFCNetwork, MultiAgentSEPSNetwork
-from fastmarl.utils.utils import MultiCategorical
-from fastmarl.utils.standarize_stream import RunningMeanStd
+from MARL_codebase.utils.models import MultiAgentFCNetwork, MultiAgentSEPSNetwork
+from MARL_codebase.utils.utils import MultiCategorical
+from MARL_codebase.utils.standarize_stream import RunningMeanStd
 
 
 def _split_batch(splits):

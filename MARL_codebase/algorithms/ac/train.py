@@ -7,8 +7,8 @@ import hydra
 from omegaconf import DictConfig
 import torch
 
-from fastmarl.utils.envs import async_reset
-from fastmarl.utils.video import record_episodes
+from MARL_codebase.utils.envs import async_reset
+from MARL_codebase.utils.video import record_episodes
 
 
 def _log_progress(

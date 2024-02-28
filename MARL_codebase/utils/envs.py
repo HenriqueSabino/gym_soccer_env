@@ -7,7 +7,7 @@ import numpy as np
 from omegaconf import DictConfig
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
-from fastmarl.utils import wrappers as mwrappers
+from MARL_codebase.utils import wrappers as mwrappers
 # from utils import wrappers as mwrappers
 from gymnasium.wrappers.time_limit import TimeLimit
 

@@ -24,7 +24,7 @@ algorithm:
   video_frames: 500
 
 env:
-  _target_: utils.envs.make_env
+  _target_: ..\..\..\..\MARL_codebase.utils.envs.make_env
   name : Soccer-v0
   time_limit : 25
   clear_info: True

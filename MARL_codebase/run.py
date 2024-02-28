@@ -1,6 +1,6 @@
 import os
 
-import gym_soccer_env.env
+# import gym_soccer_env.env
 # import gym
 import gymnasium
 
@@ -23,11 +23,11 @@ def main(cfg: DictConfig): # python ./run.py +algorithm=dqn env.name='Soccer-v0'
     #     entry_point="gym_soccer_env.env:SoccerEnv",
     #     kwargs=config
     # )
-    gymnasium.envs.registration.register(
-        id="Soccer-v0",
-        entry_point="gym_soccer_env.env:SoccerEnv",
-        kwargs=config
-    )
+    # gymnasium.envs.registration.register(
+    #     id="Soccer-v0",
+    #     entry_point="gym_soccer_env.env:SoccerEnv",
+    #     kwargs=config
+    # )
     # my_env = gym.make("Soccer-v0", **config)
     # my_env = gymnasium.make("Soccer-v0", **config)
     # print(my_env.observation_space)
