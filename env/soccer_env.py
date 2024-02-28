@@ -59,7 +59,8 @@ class SoccerEnv(AECEnv):
                  left_start=True, # if true, left team start
                  control_goalkeeper = False,
                  first_player_index = 0, # if use_kickoff_phase == True, this index selects the player to be controled before kickoff
-                 skip_kickoff = True
+                 skip_kickoff = True,
+                 verbose = False,
                 ) -> None:
         super().__init__()
 
@@ -104,6 +105,7 @@ class SoccerEnv(AECEnv):
         self.last_ball_posession = None
         self.pygame_window = None
         self.pygame_clock = None
+        self.verbose = verbose
 
     def _get_observation_spaces(self):
         if self.observation_type == 'image':
@@ -248,7 +250,8 @@ class SoccerEnv(AECEnv):
                     self.is_before_kickoff = False
                     
                     self.player_selector.playing_rotation()
-                    print("@@@@@@@@ Aconteceu kickoff | Entrou na fase de playing rotation @@@@@@@@")
+                    if self.verbose:
+                        print("@@@@@@@@ Aconteceu kickoff | Entrou na fase de playing rotation @@@@@@@@")
 
             # [6] - Check goal logic
             # Remember: y axis grows down ([0,1] points down), hence "> top" & "< botton"
@@ -256,7 +259,9 @@ class SoccerEnv(AECEnv):
             if (ball_position[0] == 0
                 and ball_position[1] > TOP_GOAL_Y
                 and ball_position[1] < BOTTOM_GOAL_Y):
-                print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
+                
+                if self.verbose:
+                    print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
                 self.right_team_score += 1
                 left_team_goal = False
                 self.player_selector.kickoff_rotation(TEAM_LEFT_NAME)
@@ -269,7 +274,9 @@ class SoccerEnv(AECEnv):
             elif (ball_position[0] == FIELD_WIDTH
                 and ball_position[1] > TOP_GOAL_Y
                 and ball_position[1] < BOTTOM_GOAL_Y):
-                print(f"> GOL {TEAM_LEFT_NAME} GOL <")
+                
+                if self.verbose:
+                    print(f"> GOL {TEAM_LEFT_NAME} GOL <")
                 self.left_team_score += 1
                 left_team_goal = True
                 self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME)
@@ -740,13 +747,17 @@ class SoccerEnv(AECEnv):
         # Ação de passe inteligente implementado, conferindo o jogador mais proximo da localização em que a bola pararia apos o passe.
         elif action[1] == 2 and has_the_ball:
             self.__pass_ball(t_action_direction, foward_direction, team)
-            print(f"{team} {player_name} passed the ball | Indexes({all_coordinates_index}, {self.player_selector._index})")
+            
+            if self.verbose:
+                print(f"{team} {player_name} passed the ball | Indexes({all_coordinates_index}, {self.player_selector._index})")
         elif action[1] == 3 and has_the_ball:
             self.__kick_ball(all_coordinates_index, t_action_direction, action[0], foward_direction, team)
-            print(f"{team} {player_name} kicked the ball | Indexes({all_coordinates_index}, {self.player_selector._index})")
+            if self.verbose:
+                print(f"{team} {player_name} kicked the ball | Indexes({all_coordinates_index}, {self.player_selector._index})")
         elif action[1] == 4:
             self.__defend_position(self.all_coordinates[all_coordinates_index], team, player_name)
-            print(f"{team} {player_name} is defending a position |  Indexes({all_coordinates_index}, {self.player_selector._index})")
+            if self.verbose:
+                print(f"{team} {player_name} is defending a position |  Indexes({all_coordinates_index}, {self.player_selector._index})")
         
         if not is_near and action[1] >= 2:
             action_name = {
@@ -754,7 +765,8 @@ class SoccerEnv(AECEnv):
                 3: "kick_ball",
                 4: "defend_position"
             }
-            print(f"{team} {player_name} lose reward trying to {action_name[action[1]]} | Indexes({all_coordinates_index}, {self.player_selector._index})")
+            if self.verbose:
+                print(f"{team} {player_name} lose reward trying to {action_name[action[1]]} | Indexes({all_coordinates_index}, {self.player_selector._index})")
             penalty = -0.01
 
         return penalty
@@ -773,10 +785,12 @@ class SoccerEnv(AECEnv):
 
         if np.random.rand() < 0.5 + defense_bonus:
             steal_ball = True
-            print(f"{team} {player_name} tentou roubar bola Indexes(?, {all_coordinates_index})")
+            if self.verbose:
+                print(f"{team} {player_name} tentou roubar bola Indexes(?, {all_coordinates_index})")
         else:
             steal_ball = False
-            print(f"{team} {player_name} falhou ao tentar roubar bola Indexes(?, {all_coordinates_index})") 
+            if self.verbose:
+                print(f"{team} {player_name} falhou ao tentar roubar bola Indexes(?, {all_coordinates_index})") 
 
         if steal_ball:
             if team == TEAM_LEFT_NAME:
@@ -785,7 +799,8 @@ class SoccerEnv(AECEnv):
                         is_near = SoccerEnv.is_near_1(player_position, coordendas, 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = player_position
-                            print(player_name,f"Roubou a bola de {self.agents[i+(self.half_number_agents)]}")
+                            if self.verbose:
+                                print(player_name,f"Roubou a bola de {self.agents[i+(self.half_number_agents)]}")
                             self.last_ball_posession = self.ball_posession
                             self.ball_posession = team
                         else:
@@ -798,7 +813,8 @@ class SoccerEnv(AECEnv):
                         is_near = SoccerEnv.is_near_1(player_position, coordendas, 15.0)
                         if is_near and (self.all_coordinates[-1] == coordendas).all():
                             self.all_coordinates[-1] = player_position
-                            print(player_name,f"Roubou a bola de {self.agents[i]}")
+                            if self.verbose:
+                                print(player_name,f"Roubou a bola de {self.agents[i]}")
                             self.last_ball_posession = self.ball_posession
                             self.ball_posession = team
                         else:
@@ -838,7 +854,8 @@ class SoccerEnv(AECEnv):
         self.all_coordinates[all_coordinates_index] = new_position
         self.player_directions[all_coordinates_index] = t_action_direction
 
-        print(f"{team} {player_name} move from ({old_position}) to ({new_position}) | Indexes({all_coordinates_index}, {self.player_selector._index})")
+        if self.verbose:
+            print(f"{team} {player_name} move from ({old_position}) to ({new_position}) | Indexes({all_coordinates_index}, {self.player_selector._index})")
 
         return new_position
 
@@ -850,13 +867,15 @@ class SoccerEnv(AECEnv):
                    ):
         old_position = self.all_coordinates[-1].copy()
         new_position = old_position + np.array(t_action_direction) * 10.5 * foward_direction
-        print("forward_direction", foward_direction)
-        print("t_action_direction", t_action_direction)
+        if self.verbose:
+            print("forward_direction", foward_direction)
+            print("t_action_direction", t_action_direction)
         new_position = np.clip(new_position, (0, 0), (FIELD_WIDTH, FIELD_HEIGHT))
 
         # Calcula o ângulo entre a direção do passe e a posição atual do jogador
         angle_center = np.arctan2(t_action_direction[1], t_action_direction[0]) + np.arctan2(foward_direction[1], foward_direction[0])
-        print("Angle center", angle_center)
+        if self.verbose:
+            print("Angle center", angle_center)
 
         if team == TEAM_LEFT_NAME:
             players_range = range(self.half_number_agents)

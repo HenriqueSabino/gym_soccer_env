@@ -146,8 +146,6 @@ class FileSystemLogger(Logger):
         super().__init__(project_name, cfg)
 
         # input(">>> AQUI FileSystemLogger 1")
-        import os
-        print('\n\n\n\n\n\n', os.getcwd())
         self.results_path = "MARL_codebase/results.csv"
         self.config_path = "MARL_codebase/used_config.yaml"
         with open(self.config_path, "w") as f:

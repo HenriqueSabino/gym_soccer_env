@@ -10,7 +10,8 @@ class PlayerSelector:
                  left_start: bool,
                  kickoff_player_index = 2,
                  control_goalkeeper = False,
-                 skip_kickoff = True
+                 skip_kickoff = True,
+                 verbose = False,
                 ):
         """
         #### Params
@@ -94,6 +95,8 @@ class PlayerSelector:
         else:
             self.selector_logic_callback = self._before_kickoff_logic_callback
             self._is_using_playing_rotation = False
+
+        self.verbose = verbose
             
 
 
@@ -132,7 +135,8 @@ class PlayerSelector:
         temp = self._currently_acting_team
         self._currently_acting_team = self._not_currently_acting_team
         self._not_currently_acting_team = temp
-        print("Trocou time")
+        if self.verbose:
+            print("Trocou time")
 
 
     # Uncomment if you need to use

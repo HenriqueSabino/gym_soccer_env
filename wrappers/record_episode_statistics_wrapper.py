@@ -6,7 +6,7 @@ from collections import deque
 import numpy as np
 
 class RecordEpisodeStatisticsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
-    def __init__(self, env: AECEnv[AgentID, ObsType, ActionType], max_episodes: int = 100):
+    def __init__(self, env: AECEnv[AgentID, ObsType, ActionType], max_episodes: int = 100, verbose: bool = False):
         """
         env (AECEnv): multi-agent env
         max_episodes (int): max number of episodes returns to keep statistics.
@@ -20,6 +20,7 @@ class RecordEpisodeStatisticsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         self.episode_length = 0
         self.reward_queue = deque(maxlen=max_episodes)
         self.length_queue = deque(maxlen=max_episodes)
+        self.verbose = verbose
         
 
     def step(self, action):
@@ -32,7 +33,8 @@ class RecordEpisodeStatisticsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
 
         if done or terminated:
             all_agent_infos = list(self.env.infos.values())
-            print(f"[DEBUG] {self.episode_length} | {all_agent_infos}")
+            if self.verbose:
+                print(f"[DEBUG] {self.episode_length} | {all_agent_infos}")
             episode_returns_list = [agent_info["episode_return"] for agent_info in all_agent_infos]
             team_episode_reward = sum(episode_returns_list)
             # Put the same info in all agents info dicts

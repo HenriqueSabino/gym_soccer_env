@@ -39,7 +39,7 @@ def _epsilon_schedule(decay_style, eps_start, eps_end, eps_decay, total_steps):
     return _thunk
 
 
-def _evaluate(env, model, eval_episodes, greedy_epsilon):
+def _evaluate(env, model, eval_episodes, greedy_epsilon, verbose=False):
     infos = []
     for j in range(eval_episodes):
         done = False
@@ -51,10 +51,12 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon):
                 act = model.act(obs, greedy_epsilon)
                 # print("ACT from dqn: ", act)
             if isinstance(act, int) or isinstance(act, np.int64):
-                print(f"act: {act} | type {type(act)}")
+                if verbose:
+                    print(f"act: {act} | type {type(act)}")
                 env.step(act)
             else:
-                print(f"act: {act} | len {len(act)}")
+                if verbose:
+                    print(f"act: {act} | len {len(act)}")
                 for a in act:
                     env.step(a)
             obs, _, done, truncated, info = env.last()
