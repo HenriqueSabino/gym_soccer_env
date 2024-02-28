@@ -36,7 +36,7 @@ MARL_dqn_config = {
         'layers': [64, 64], 
         'parameter_sharing': False, 
         'use_orthogonal_init': True, 
-        'device': 'cpu'
+        'device': 'cuda'
     }, 
     'training_start': 2000, 
     'buffer_size': 100_000, # 10_000,

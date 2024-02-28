@@ -13,6 +13,7 @@ from MARL_codebase.utils.standarize_stream import RunningMeanStd
 import numpy as np
 
 class QNetwork(nn.Module):
+
     def __init__(
         self,
         obs_space,
@@ -86,8 +87,10 @@ class QNetwork(nn.Module):
         self.target_update_interval_or_tau = cfg.target_update_interval_or_tau
 
         self.standardize_returns = cfg.standardize_returns
-        self.ret_ms = RunningMeanStd(shape=(self.n_agents,))
+        self.ret_ms = RunningMeanStd(device, shape=(self.n_agents,))
 
+
+        self.labels_to_index = {'rew': 0, 'done': 1, 'obs': 2, 'next_obs': 3, 'act': 4}
         print(self)
 
     def forward(self, inputs):
@@ -107,17 +110,18 @@ class QNetwork(nn.Module):
         return actions
     
     def _compute_loss(self, batch):
+
         # Assume que todos os agentes tem a mesma observação
         # Coloca a mesma observação n vezes como input da rede
         # obs = [batch[f"obs{i}"] for i in range(self.n_agents)]
-        obs = [ batch["obs"] ] * self.n_agents
+        obs = [ batch[self.labels_to_index["obs"]] ] * self.n_agents
         # nobs = [batch[f"next_obs{i}"] for i in range(self.n_agents)]
-        nobs = [ batch["next_obs"] ] * self.n_agents
+        nobs = [ batch[self.labels_to_index["next_obs"]] ] * self.n_agents
         
         # print(batch.keys())
         # print(batch["act"])
         # print(batch["act"].long())
-        action = torch.stack([batch["act"].long()])
+        action = torch.stack([batch[self.labels_to_index["act"]].long()])
         # print(action)
         # input(">>> ")
         # action = torch.stack([batch[f"act{i}"].long() for i in range(self.n_agents)])
@@ -132,11 +136,11 @@ class QNetwork(nn.Module):
         # rewards = torch.stack(
         #     [batch["rew"][:, i].view(-1, 1) for i in range(self.n_agents)]
         # )
-        rewards = torch.stack([batch["rew"]] * self.n_agents)
+        rewards = torch.stack([batch[self.labels_to_index["rew"]]] * self.n_agents)
 
         # print(batch["done"])
         # input(">>> ")
-        dones = batch["done"].unsqueeze(0).repeat(self.n_agents, 1, 1)
+        dones = batch[self.labels_to_index["done"]].unsqueeze(0).repeat(self.n_agents, 1, 1)
         # print(dones)
         # input(">>> ")
 

@@ -186,9 +186,14 @@ def main(env, logger, **cfg):
             # print(type(batch))
             # print(batch)
             # input(">>> anotar typehint do batch")
-            batch = {
-                k: torch.from_numpy(v).to(cfg.model.device) for k, v in batch.items()
-            }
+
+            # Usa isso pra setar o dict labels_to_index no model.py
+            # print({k: i for i, k in enumerate(batch)})
+
+            batch = [
+                torch.from_numpy(v).to(cfg.model.device) for _, v in batch.items()
+            ]
+
             model.update(batch)
         # input(">>> dqn.train.main 9")
         
