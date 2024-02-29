@@ -297,7 +297,7 @@ class SoccerEnv(AECEnv):
             reward = penalty
         
             if self.ball_posession_reward:
-                team_range = range(0,(self.half_number_agents)) if team == TEAM_LEFT_NAME else range((self.half_number_agents), self.number_agents)
+                team_range = slice(0,(self.half_number_agents)) if team == TEAM_LEFT_NAME else slice((self.half_number_agents), self.number_agents)
                 if SoccerEnv.is_in_any_array(ball_position, self.all_coordinates[team_range]):
                     reward += 0.1
 

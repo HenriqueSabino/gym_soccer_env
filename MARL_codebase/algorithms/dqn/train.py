@@ -146,7 +146,8 @@ def main(env, logger, **cfg):
             # print("=------=")
             # input(">>> dqn.train.main 4")
             logger.log_metrics(prepared_info_of_each_episode)
-            print(f"eval episode return: {episode_info["episode_return"]}")
+            episode_return = episode_info["episode_return"]
+            print(f"eval episode return: {episode_return}")
 
         
         # input(">>> dqn.train.main 5")
