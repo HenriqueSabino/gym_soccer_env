@@ -189,9 +189,12 @@ class SoccerEnv(AECEnv):
         # [5] - Atualiza ball_posession de acordo com a posição inicial do time
         team_coordinates = self.all_coordinates[team]
         ball_position = self.all_coordinates["ball"]
-        is_near = SoccerEnv.is_near_2(ball_position, team_coordinates, 0.3)
-        if is_near:
-            self.ball_posession = team
+        for player_coord in team_coordinates:
+            is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+            if is_near:
+                self.all_coordinates["ball"] = player_coord
+                self.ball_posession = team
+                break
 
         # Must return:
         # [0] observation(ObsType): An element of the environment's observation_space as the next observation due to the agent actions.
@@ -273,7 +276,19 @@ class SoccerEnv(AECEnv):
                 # Reset position
                 self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
                 self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
+                self.all_coordinates["ball"] = self.start_ball_position
+                self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+                self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
                 self.player_directions = self.start_directions
+
+                team_coordinates = self.all_coordinates[TEAM_LEFT_NAME]
+                ball_position = self.all_coordinates["ball"]
+                for player_coord in team_coordinates:
+                    is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                    if is_near:
+                        self.all_coordinates["ball"] = player_coord
+                        self.ball_posession = team
+                        break
 
             elif (ball_position[0] == FIELD_WIDTH
                 and ball_position[1] > TOP_GOAL_Y
@@ -291,7 +306,19 @@ class SoccerEnv(AECEnv):
                 # Reset position
                 self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
                 self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
+                self.all_coordinates["ball"] = self.start_ball_position
+                self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+                self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
                 self.player_directions = self.start_directions
+
+                team_coordinates = self.all_coordinates[TEAM_RIGHT_NAME]
+                ball_position = self.all_coordinates["ball"]
+                for player_coord in team_coordinates:
+                    is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                    if is_near:
+                        self.all_coordinates["ball"] = player_coord
+                        self.ball_posession = team
+                        break
 
             # [7] - Change selected player
             self.player_selector.next_player()
@@ -562,6 +589,9 @@ class SoccerEnv(AECEnv):
         # Guarda a posição e direção inicial para resetar depois do gol
         self.start_positions_left_kickoff = self.all_coordinates[TEAM_LEFT_NAME].copy()
         self.start_positions_right_kickoff = self.all_coordinates[TEAM_RIGHT_NAME].copy()
+        self.start_ball_position = ball_position.copy()
+        self.start_left_goalkeeper_position = self.all_coordinates["left_goalkeeper"].copy()
+        self.start_right_goalkeeper_position = self.all_coordinates["right_goalkeeper"].copy()
         self.start_directions = self.player_directions.copy()
 
         # print('ALL LEFT COORDINATES:', self.all_coordinates[TEAM_LEFT_NAME])
