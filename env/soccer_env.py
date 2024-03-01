@@ -897,6 +897,7 @@ class SoccerEnv(AECEnv):
                         self.ball_posession = team
 
                         penalty = +0.01 # Sobrescreve -0.01 caso entre no if
+                        break
                     else:
                         penalty = -0.01
             else:
