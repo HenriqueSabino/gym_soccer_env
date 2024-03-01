@@ -7,7 +7,10 @@ from cpprb import ReplayBuffer, create_before_add_func, create_env_dict
 from omegaconf import DictConfig
 
 from MARL_codebase.utils import wrappers
+from MARL_codebase.utils.loggers import Logger
 from MARL_codebase.utils.video import record_episodes
+from MARL_codebase.algorithms.dqn.model import QNetwork 
+from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
 import gymnasium
 import numpy as np
 
@@ -66,16 +69,21 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon, verbose=False):
     return infos
 
 
-def main(env, logger, **cfg):
+def main(env: AECEnv, logger: Logger, **cfg):
 
     cfg = DictConfig(cfg)
 
     # replay buffer:
-    env_dict = create_env_dict(env, int_type=np.uint8, float_type=np.float32)
-
-    # Esse trecho altera o shape de "rew" e por isso espera armazenar uma obs pra cada n_agent no buffer
-    # force_coop = wrappers.is_wrapped_by(env, wrappers.CooperativeReward)
-    # if not force_coop: env_dict["rew"]["shape"] = env.n_agents
+    # env_dict = create_env_dict(env, int_type=np.uint8, float_type=np.float32)
+    observation_space = env.observation_space("mock_agent") # Space.Box
+    action_space = env.action_space("mock_agent") # Space.Discrete
+    env_dict = {
+        "rew" : {"shape": 2, "dtype": np.float32},
+        "done": {"shape": 1, "dtype": np.float32},
+        "obs" : {"shape": observation_space.shape, "dtype": np.float32},
+        "next_obs" : {"shape": observation_space.shape, "dtype": np.float32},
+        "act" : {"shape": 2, "dtype": np.float32} # np.uint8
+    }
 
     # print(cfg.buffer_size)
     # print(env_dict)
@@ -83,14 +91,15 @@ def main(env, logger, **cfg):
     # print(rb)
     # input(">>> ver rb")
     before_add = create_before_add_func(env)
-
-
-    # essa linha é o equivalente a um f"import {cfg.model}" substituindo cfg.model pelo valor (string) que está na variável
-    model = hydra.utils.instantiate(
-        cfg.model, 
-        env.observation_space(agent="mock_agent"), 
-        env.action_space(agent="mock_agent"), 
-        cfg
+    model = QNetwork(
+        env.half_number_agents,
+        observation_space,
+        action_space,
+        cfg,
+        cfg.model.layers,
+        cfg.model.parameter_sharing,
+        cfg.model.use_orthogonal_init,
+        cfg.model.device
     )
 
     # Logging
@@ -152,6 +161,7 @@ def main(env, logger, **cfg):
         
         # input(">>> dqn.train.main 5")
         act = model.act(obs, epsilon=eps_sched(j))
+        # print("action", act)
         # input(">>> dqn.train.main 6")
         if isinstance(act, int) or isinstance(act, np.int64):
             # print(f"act: {act} | type {type(act)}")
@@ -161,6 +171,7 @@ def main(env, logger, **cfg):
             for a in act:
                 env.step(a)
         next_obs, rew, done, truncated, info = env.last()
+
         # input(">>> dqn.train.main 7")
 
         # if (cfg.use_proper_termination and (done or truncated) and info.get("TimeLimit.truncated", False)):
@@ -172,7 +183,6 @@ def main(env, logger, **cfg):
         #     proper_done = False
         # else:
         #     proper_done = done
-        # input(">>> dqn.train.main 8")
         # print(obs)
         # print(act)
         # print(next_obs)
@@ -181,6 +191,7 @@ def main(env, logger, **cfg):
         rb.add(
             **before_add(obs=obs, act=act, next_obs=next_obs, rew=rew, done=done)
         )
+        # input(">>> dqn.train.main 8")
         
 
         if j > cfg.training_start:
@@ -216,7 +227,7 @@ def main(env, logger, **cfg):
             
         # input(">>> dqn.train.main 11")
         
-    torch.save(model.state_dict(), "./trained_model.tch")
+    torch.save(model.state_dict(), "./trained_models/latest_trained_model.tch")
 
 
 if __name__ == "__main__":

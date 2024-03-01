@@ -8,6 +8,7 @@ from wrappers.prepare_observation_to_marl_dqn_wrapper import PrepareObservationT
 from wrappers.max_steps_wrapper import MaxStepsWrapper
 from wrappers.record_episode_statistics_wrapper import RecordEpisodeStatisticsWrapper
 from wrappers.random_choice_opponent_wrapper import RandomChoiceOpponentWrapper
+from wrappers.return_all_team_agents_reward_wrapper import ReturnAllTeamAgentsRewardWrapper
 
 from pettingzoo.utils.conversions import aec_to_parallel
 from pettingzoo.utils import wrappers as pettingzoo_wrappers
@@ -28,7 +29,7 @@ MARL_dqn_config = {
     'save_interval': 10000, 
     'eval_interval': 10000, 
     'eval_episodes': 5, 
-    'video_interval': False, 
+    'video_interval': 10_000, 
     'video_frames': 500, 
     'name': 'dqn', 
     'model': {
@@ -65,7 +66,7 @@ params = {
     'control_goalkeeper': False,
     'color_option': 2, # Options: [0, 1, 2]
     'skip_kickoff': True,
-    'ball_posession_reward': True,
+    'ball_posession_reward': True
 }
 
 env = make_raw_env(params)
@@ -78,6 +79,7 @@ env = PrepareObservationToMarlDqnWrapper(env)
 env = MaxStepsWrapper(env, max_steps=800)
 env = RecordEpisodeStatisticsWrapper(env, max_episodes=100)
 env = RandomChoiceOpponentWrapper(env)
+env = ReturnAllTeamAgentsRewardWrapper(env)
 # env = aec_to_parallel(env)
 env.reset()
 
@@ -88,6 +90,7 @@ env.reset()
 # env.last()
 # obs, reward, done, truncated, info = env.last()
 # print(obs)
+# print(reward)
 
 logger = FileSystemLogger("Soccer-v0", DictConfig(MARL_dqn_config))
 

@@ -1,7 +1,9 @@
 import numpy as np
 from gymnasium import ActionWrapper, spaces
+from pettingzoo.utils.wrappers.base import BaseWrapper
+from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
     
-class StepListOfActionsWrapper(ActionWrapper):
+class StepListOfActionsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
     def __init__(self, env):
         super().__init__(env)
 
@@ -14,7 +16,9 @@ class StepListOfActionsWrapper(ActionWrapper):
 
         rewards = []
         for a in flattened_actions_index:
-            last_observation, reward, done, truncated, info = self.env.step(a)
+            self.env.step(a)
+            last_observation, reward, done, truncated, info = self.env.last()
+
             rewards.append(reward)
 
         

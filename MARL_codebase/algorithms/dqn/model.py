@@ -16,6 +16,7 @@ class QNetwork(nn.Module):
 
     def __init__(
         self,
+        num_agents,
         obs_space,
         action_space,
         cfg,
@@ -38,9 +39,9 @@ class QNetwork(nn.Module):
         # print(f"Lista com obs de cada agente: {[flatdim(o) for o in np.array(obs_space)]}")
         # print(f"Espaço de ações: {action_space.n}")
         # input(">>> Ver obs_shape e action_shape")
-        self.n_agents = 4 # 1 # len(obs_space)
-        obs_shape = [ flatdim(obs_space) ] * self.n_agents # [flatdim(o) for o in np.array(obs_space)]
-        action_shape = [ action_space.n ] * self.n_agents # [flatdim(a) for a in np.array(action_space)]
+        self.n_agents = num_agents
+        obs_shape = [ flatdim(obs_space) ] * num_agents # [flatdim(o) for o in np.array(obs_space)]
+        action_shape = [ action_space.n ] * num_agents # [flatdim(a) for a in np.array(action_space)]
 
 
         # print(cfg)
@@ -98,7 +99,9 @@ class QNetwork(nn.Module):
 
     def act(self, obs, epsilon):
         if epsilon > random.random():
-            actions = self.action_space.sample()
+            actions = []
+            for _ in range(self.n_agents):
+                actions.append(self.action_space.sample())
             return actions
         with torch.no_grad():
             inputs = []
@@ -107,6 +110,7 @@ class QNetwork(nn.Module):
             for _ in range(self.n_agents):
                 inputs.append(torch.from_numpy(obs).to(self.device))
             actions = [x.argmax(-1).cpu().item() for x in self.critic(inputs)]
+            # print("actions", actions)
         return actions
     
     def _compute_loss(self, batch):
@@ -119,24 +123,30 @@ class QNetwork(nn.Module):
         nobs = [ batch[self.labels_to_index["next_obs"]] ] * self.n_agents
         
         # print(batch.keys())
-        # print(batch["act"])
-        # print(batch["act"].long())
-        action = torch.stack([batch[self.labels_to_index["act"]].long()])
+        # print(len(batch))
+        # print(batch[4])
+        # print(batch[self.labels_to_index["act"]][:, 0])
+        # print(batch[self.labels_to_index["act"]][:, 1])
+        # action = torch.stack([batch[self.labels_to_index["act"]].long()] * self.n_agents)
+        action = torch.stack(
+            [batch[self.labels_to_index["act"]].long()[:, i].view(-1, 1) for i in range(self.n_agents)]
+        )
         # print(action)
         # input(">>> ")
         # action = torch.stack([batch[f"act{i}"].long() for i in range(self.n_agents)])
         
-        # print(batch["rew"])
+        # print(batch[self.labels_to_index["rew"]])
         # print(batch["rew"].repeat(1, self.n_agents))
         # for i in range(self.n_agents):
             # print(batch["rew"].repeat(1, self.n_agents)[:, i])
         # print("@@@@@@@@@@@")
         # print(batch["rew"].repeat(1, self.n_agents)[:, 1].view(-1, 1))
         # input(">>> ")
-        # rewards = torch.stack(
-        #     [batch["rew"][:, i].view(-1, 1) for i in range(self.n_agents)]
-        # )
-        rewards = torch.stack([batch[self.labels_to_index["rew"]]] * self.n_agents)
+        rewards = torch.stack(
+            [batch[self.labels_to_index["rew"]][:, i].view(-1, 1) for i in range(self.n_agents)]
+        )
+        # rewards = torch.stack([batch[self.labels_to_index["rew"]]] * self.n_agents)
+        # print(rewards)
 
         # print(batch["done"])
         # input(">>> ")
@@ -161,6 +171,13 @@ class QNetwork(nn.Module):
             ) / torch.sqrt(self.ret_ms.var.view(-1, 1, 1))
 
         q_states = all_q_states.gather(-1, action)
+        # print("=-------------=")
+        # print(obs[0].shape)
+        # print(all_q_states.shape)
+        # print(action.shape)
+        # print(q_states.shape)
+        # print("=-------------=")
+        # input(">>>")
         return torch.nn.functional.mse_loss(q_states, target_states)
 
 

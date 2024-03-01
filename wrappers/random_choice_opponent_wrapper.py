@@ -2,11 +2,13 @@ from typing import Optional
 from pettingzoo.utils.wrappers.base import BaseWrapper
 from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
 
+from env.constants import TEAM_LEFT_NAME
+
 class RandomChoiceOpponentWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
     def __init__(self, env: AECEnv[AgentID, ObsType, ActionType], verbose=False):
         """
         env (AECEnv): multi-agent env
-        max_steps (int): max number of steps before turn truncations[agent] True.
+        verbose (bool): show prints.
         """
         assert isinstance(
             env, AECEnv
@@ -15,18 +17,19 @@ class RandomChoiceOpponentWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         self.verbose = verbose
 
     def step(self, action: ActionType):
-        _, _, _, team, _ = self.player_selector.get_info()
+        _, _, _, team, other_team = self.player_selector.get_info()
 
-        if team == 'left_team':
-            self.env.step(action)
+        if team == TEAM_LEFT_NAME:
+            super().step(action)
         else:
             print('Something went wrong!')
 
-        _, _, _, team, _ = self.player_selector.get_info()
+        # Should swaap team with other_team (if not before_kickoff)
+        _, _, _, team, other_team = self.player_selector.get_info()
         
-        if self.verbose:
-            print(team, 'random action now')
         action = self.env.action_space(agent="mock_agent").sample()
+        if self.verbose:
+            print(f'{team} picked {action} as a random action')
 
-        self.env.step(action)
+        super().step(action)
 

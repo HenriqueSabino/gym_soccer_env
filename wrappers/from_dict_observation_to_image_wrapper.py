@@ -14,7 +14,7 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
         super().__init__(env)
 
 
-    def observation_space(self, agent: str = None) -> spaces.Box:
+    def observation_space(self, agent: AgentID) -> spaces.Box:
         shape = (consts.FIELD_WIDTH+1, consts.FIELD_HEIGHT+1, 4)
         return spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
 
@@ -24,10 +24,11 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
     #     assert isinstance(observation, dict), "Observation must be dict type"
 
     #     shape = (consts.FIELD_WIDTH+1, consts.FIELD_HEIGHT+1, 4)
-    #     image = np.zeros(shape, dtype=np.float32)
+    #     image = np.zeros(shape, dtype=np.uint8)
 
-    #     current_player = observation["left_team"][0]
-    #     image[int(current_player[1]), int(current_player[0]), 0] = 255
+    #     obs_index, _ = self.env.player_name_to_index[self.agent_selection]
+    #     current_player = observation["left_team"][obs_index]
+    #     image[int(current_player[0]), int(current_player[1]), 0] = 255
 
     #     for player_position in observation["left_team"]:
     #         x, y = player_position
@@ -38,14 +39,7 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
     #         image[int(x), int(y), 2] = 255  # Set the green channel to 255 for right team players
 
     #     ball_x, ball_y = observation["ball_position"]
-    #     try:
-    #         image[int(ball_x), int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball
-    #     except:
-    #         print("DEBUG")
-    #         print(observation)
-    #         print(ball_x, ball_y) # Porque ball_x == 80 ? o máximo é 79 e mínimo é 0.
-    #         print("DEBUG")
-    #         image[int(ball_x), int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball
+    #     image[int(ball_x), int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball, int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball
         
     #     return image
     
@@ -58,7 +52,7 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
         shape = (consts.FIELD_WIDTH+1, consts.FIELD_HEIGHT+1, 4)
         image = np.zeros(shape, dtype=np.uint8)
 
-        obs_index, _ = self.env.player_name_to_obs_index[self.agent_selection]
+        obs_index, _ = self.env.player_name_to_index[self.agent_selection]
         current_player = observation["left_team"][obs_index]
         image[int(current_player[0]), int(current_player[1]), 0] = 255
 

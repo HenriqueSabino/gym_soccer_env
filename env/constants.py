@@ -25,8 +25,8 @@ TEAM_LEFT_NAME = "left_team"
 TEAM_RIGHT_NAME = "right_team"
 
 # Ball constants
-BALL_VELOCITY = 3.0
-BALL_SLOW_CONSTANT = 1.0
+BALL_VELOCITY = 10.5
+BALL_SLOW_CONSTANT = 1.0 # Not used
 
 # Goal constants
 GOAL_SIZE = 7.32

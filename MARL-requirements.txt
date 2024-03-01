@@ -12,3 +12,5 @@ pandas==1.2.4
 # pytorch==1.8.*
 pyyaml==5.4.1
 stable-baselines3[extra]>=0.11.0,<=1.1.0a3
+
+imageio-ffmpeg

@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import numpy as np
 import imageio
 import torch
 
@@ -32,10 +32,10 @@ def record_episodes(env, act_func, n_timesteps, path):
             with torch.no_grad():
                 act = act_func(obs)
                 if isinstance(act, int) or isinstance(act, np.int64):
-                    print(f"act: {act} | type {type(act)}")
+                    # print(f"act: {act} | type {type(act)}")
                     env.step(act)
                 else:
-                    print(f"act: {act} | len {len(act)}")
+                    # print(f"act: {act} | len {len(act)}")
                     for a in act:
                         env.step(a)
                 obs, r, done, truncated, infos = env.last()

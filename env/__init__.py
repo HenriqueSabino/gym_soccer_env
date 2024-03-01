@@ -19,7 +19,6 @@ propriedades e gera um "AssertionError: action space does not inherit from
 ######################################################
 
 # Permite acessar a classe SoccerEnv no main.py que "importa" esse init
-# from env.soccer_env import SoccerEnv
 from env.soccer_env import (
     SoccerEnv,
     make_raw_env,

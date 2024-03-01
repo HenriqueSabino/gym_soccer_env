@@ -24,14 +24,14 @@ class RecordEpisodeStatisticsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         
 
     def step(self, action):
-        super().step(action)
+        self.env.step(action)
 
         self.episode_length += 1
 
-        obs, r, done, terminated, info = self.env.last()
+        obs, r, done, truncated, info = self.env.last()
         self.env.infos[self.agent_selection]["episode_return"] += r
 
-        if done or terminated:
+        if done or truncated:
             all_agent_infos = list(self.env.infos.values())
             if self.verbose:
                 print(f"[DEBUG] {self.episode_length} | {all_agent_infos}")
@@ -50,7 +50,7 @@ class RecordEpisodeStatisticsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
             self.length_queue.append(self.episode_length)
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> None:
-        super().reset(seed=seed, options=options) # Must reset first
+        self.env.reset(seed=seed, options=options) # Must reset first
 
         for agent in self.env.agents:
             # Create "episode_return" key in agent_info dict

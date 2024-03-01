@@ -59,8 +59,8 @@ class FlattenActionWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
     #     return multi_discrete_action_indexes
     
 
-    def step(self, action: Union[int, list[int]]) -> spaces.MultiDiscrete:
-        # print("[FlattenActionWrapper] Recebeu: ", flattened_action_index, type(flattened_action_index))
+    def step(self, action: Union[int, list[int]]) -> None:
+        # print("[FlattenActionWrapper] Recebeu: ", action, type(action))
 
         if isinstance(action, int) or \
            isinstance(action, np.int64):
@@ -86,7 +86,7 @@ class FlattenActionWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         else:
             raise TypeError(f"Argument must be type int or list[int]. Got type {type(action)}")
 
-        return self.env.step(multi_discrete_action_indexes)
+        self.env.step(multi_discrete_action_indexes)
 
 
     def __str__(self) -> str:
