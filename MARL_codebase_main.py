@@ -16,7 +16,6 @@ from pettingzoo.utils import wrappers as pettingzoo_wrappers
 from omegaconf import DictConfig
 from MARL_codebase.algorithms.dqn import model, train
 from MARL_codebase.utils.loggers import FileSystemLogger
-# from MARL_codebase.utils.wrappers import SquashDones, RecordEpisodeStatistics
 
 # algorithms = ["ac", "dqn", "vdn", "qmix"]
 # command = f"python run.py +algorithm=dqn env.name='Soccer-v0' env.time_limit=25"
@@ -29,8 +28,8 @@ MARL_dqn_config = {
     'save_interval': 100_000, 
     'eval_interval': 100_000, 
     'eval_episodes': 10, 
-    'video_interval': 999, 
-    'video_frames': 60, 
+    'video_interval': 998, 
+    'video_frames': 500, 
     'name': 'dqn', 
     'model': {
         '_target_': 'MARL_codebase.algorithms.dqn.model.QNetwork', 
@@ -56,7 +55,7 @@ MARL_dqn_config = {
     'target_update_interval_or_tau': 200
 }
 
-params = {
+env_params = {
     'render_mode': 'rgb_array', 
     'observation_format': 'dict', 
     'num_agents' : 6,
@@ -69,19 +68,23 @@ params = {
     'ball_posession_reward': True
 }
 
-env = make_raw_env(params)
+def make_MARL_codabase_wrapped_env(env_params: dict):
+    env = make_raw_env(env_params)
 
-env = pettingzoo_wrappers.AssertOutOfBoundsWrapper(env)
-env = pettingzoo_wrappers.OrderEnforcingWrapper(env)
-env = FlattenActionWrapper(env)
-env = FromDictObservationToImageWrapper(env)
-env = PrepareObservationToMarlDqnWrapper(env)
-env = MaxStepsWrapper(env, max_steps=50)
-env = RecordEpisodeStatisticsWrapper(env, max_episodes=10_000)
-env = RandomChoiceOpponentWrapper(env)
-env = ReturnAllTeamAgentsRewardWrapper(env)
-# env = aec_to_parallel(env)
-env.reset()
+    env = pettingzoo_wrappers.AssertOutOfBoundsWrapper(env)
+    env = pettingzoo_wrappers.OrderEnforcingWrapper(env)
+
+    env = FlattenActionWrapper(env)
+    env = FromDictObservationToImageWrapper(env)
+    env = PrepareObservationToMarlDqnWrapper(env)
+    env = MaxStepsWrapper(env, max_steps=50)
+    env = RecordEpisodeStatisticsWrapper(env, max_episodes=10_000)
+    env = RandomChoiceOpponentWrapper(env)
+    env = ReturnAllTeamAgentsRewardWrapper(env)
+    # env = aec_to_parallel(env)
+    return env
+
+env = make_MARL_codabase_wrapped_env(env_params)
 
 # print(env.observation_space(agent="mock_string"))
 # print(env.action_space(agent="mock_string"))
@@ -94,6 +97,11 @@ env.reset()
 
 logger = FileSystemLogger("Soccer-v0", DictConfig(MARL_dqn_config))
 
-train.main(env, logger, **MARL_dqn_config)
+train.main(env, 
+           logger, 
+           env_params,
+           make_MARL_codabase_wrapped_env,
+           **MARL_dqn_config, 
+           )
 
 print("✅ Successfully run. Remember to look warnings and PRINTS BETWEEN WARNINGS.")

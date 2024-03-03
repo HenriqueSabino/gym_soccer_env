@@ -359,7 +359,7 @@ class SoccerEnv(AECEnv):
                 reward -= 0.01
 
         # [8] - Update player reward
-        self._cumulative_rewards[player_name] = 0
+        # self._cumulative_rewards[player_name] = 0 # Essa linha ta no step da documentação(pettingzoo.farama.org/content/environment_creation/), mas não sei se ta certo.
         self.storage[player_name] = reward
         # Only update reward dict after a full cycle of steps (
         # patting_zoo api test obliges this
@@ -936,7 +936,7 @@ class SoccerEnv(AECEnv):
 
         # Ao chegar na posição nova, pega a bola automaticamente caso a bola esteja livre
         if self.ball_posession is not other_team and \
-           SoccerEnv.is_near_1(new_position, ball_position, 0.4):
+           SoccerEnv.is_near_1(new_position, ball_position, 1.0):
             self.all_coordinates["ball"] = new_position
             self.last_ball_posession = self.ball_posession
             self.ball_posession = team

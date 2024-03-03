@@ -69,7 +69,7 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon, verbose=False):
     return infos
 
 
-def main(env: AECEnv, logger: Logger, **cfg):
+def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg):
 
     cfg = DictConfig(cfg)
 
@@ -88,8 +88,7 @@ def main(env: AECEnv, logger: Logger, **cfg):
     # print(cfg.buffer_size)
     # print(env_dict)
     rb = ReplayBuffer(cfg.buffer_size, env_dict)
-    # print(rb)
-    # input(">>> ver rb")
+
     before_add = create_before_add_func(env)
     model = QNetwork(
         env.half_number_agents,
@@ -122,13 +121,11 @@ def main(env: AECEnv, logger: Logger, **cfg):
 
     # input(">>> dqn.train.main 1")
     
-
     for j in range(cfg.total_steps + 1):
         
         # input(">>> dqn.train.main 2")
         if j % cfg.eval_interval == 0:
             infos = _evaluate(env, model, cfg.eval_episodes, cfg.greedy_epsilon)
-            # infos = _evaluate(env, model, 1, cfg.greedy_epsilon)
 
             # input(">>> dqn.train.main 3")
             # Prepare data from infos to pass to the logger
@@ -136,11 +133,6 @@ def main(env: AECEnv, logger: Logger, **cfg):
             for i in infos:
                 # print(i)
                 episode_info = {}
-                # selected_player_name = env.agent_selection
-                # episode_info["episode_return"]      = i[selected_player_name]["episode_return"]
-                # episode_info["team_episode_return"] = i[selected_player_name]["team_episode_return"]
-                # episode_info["episode_length"]      = i[selected_player_name]["episode_length"]
-                # episode_info["episode_time"]        = i[selected_player_name]["episode_time"]
                 episode_info["episode_return"]      = i["episode_return"]
                 episode_info["team_episode_return"] = i["team_episode_return"]
                 episode_info["episode_length"]      = i["episode_length"]
@@ -150,9 +142,7 @@ def main(env: AECEnv, logger: Logger, **cfg):
             prepared_info_of_each_episode.append(
                 {'updates': j, 'environment_steps': j, 'epsilon': eps_sched(j)}
             )
-            # print("infos")
-            # print(prepared_info_of_each_episode)
-            # print("=------=")
+
             # input(">>> dqn.train.main 4")
             logger.log_metrics(prepared_info_of_each_episode)
             episode_return = episode_info["episode_return"]
@@ -174,20 +164,6 @@ def main(env: AECEnv, logger: Logger, **cfg):
 
         # input(">>> dqn.train.main 7")
 
-        # if (cfg.use_proper_termination and (done or truncated) and info.get("TimeLimit.truncated", False)):
-        #     del info["TimeLimit.truncated"]
-        #     proper_done = False
-        # if cfg.use_proper_termination and truncated:
-        #     proper_done = False
-        # elif cfg.use_proper_termination == "ignore":
-        #     proper_done = False
-        # else:
-        #     proper_done = done
-        # print(obs)
-        # print(act)
-        # print(next_obs)
-        # print(rew)
-        # print(proper_done)
         rb.add(
             **before_add(obs=obs, act=act, next_obs=next_obs, rew=rew, done=done)
         )
@@ -196,9 +172,7 @@ def main(env: AECEnv, logger: Logger, **cfg):
 
         if j > cfg.training_start:
             batch: dict[str, np.ndarray] = rb.sample(cfg.batch_size)
-            # print(type(batch))
             # print(batch)
-            # input(">>> anotar typehint do batch")
 
             # Usa isso pra setar o dict labels_to_index no model.py
             # print({k: i for i, k in enumerate(batch)})
@@ -219,10 +193,12 @@ def main(env: AECEnv, logger: Logger, **cfg):
 
         if cfg.video_interval and j % cfg.video_interval == 0:
             record_episodes(
-                deepcopy(env),
+                # deepcopy(env),
                 lambda x: model.act(x, cfg.greedy_epsilon),
                 cfg.video_frames,
                 f"./videos/step-{j}.mp4",
+                env_params,
+                make_fn
             )
             
         # input(">>> dqn.train.main 11")

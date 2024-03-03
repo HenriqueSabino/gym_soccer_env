@@ -3,7 +3,6 @@ import numpy as np
 import imageio
 import torch
 
-
 class VideoRecorder:
     def __init__(self, fps=30):
         self.fps = fps
@@ -13,25 +12,29 @@ class VideoRecorder:
         self.frames = []
 
     def record_frame(self, env):
-        self.frames.append(env.render()) # expect mode="rgb_array"
+        self.frames.append(env.render())
 
     def save(self, filename):
         imageio.mimsave(f"{filename}", self.frames, fps=self.fps)
 
 
-def record_episodes(env, act_func, n_timesteps, path):
+def record_episodes(act_func, n_timesteps, path, env_params: dict, make_fn: callable):
     recorder = VideoRecorder()
     done = True
 
+    env = make_fn(env_params)
+
     for _ in range(n_timesteps):
-        if done:
+        if done or truncated:
             env.reset()
             obs, r, done, truncated, infos = env.last()
             recorder.record_frame(env)
         else:
             with torch.no_grad():
                 act = act_func(obs)
-                if isinstance(act, int) or isinstance(act, np.int64):
+                if isinstance(act, int) or \
+                    isinstance(act, np.int64) or \
+                    isinstance(act, np.int32):
                     # print(f"act: {act} | type {type(act)}")
                     env.step(act)
                 else:
