@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 from PIL.Image import Image as ImageType
 from env.constants import TEAM_LEFT_NAME, TEAM_RIGHT_NAME
 
-""" Esse arquivo serve para debugar o SoccerEnv.
+""" Esse arquivo serve para debugar manualmente o SoccerEnv.
 
 [1] Definir uma sequência de ações;
 [2] Rodar uma sequencia de ações;
@@ -22,17 +22,15 @@ A 'action' passada para o 'step' é uma dupla contendo a direção do movimento 
 # posição 1: ação (de 0 (andar) até 4)
 
 mapeamento da posição 1:
-action_to_direction = {
-    0: np.array([1, 0]),    # Right (foward)
-    1: np.array([-1, 0]),   # Left (backward)
-    2: np.array([0, -1]),   # Up
-    3: np.array([0, 1]),    # Down
-    4: np.array([1, -1]),   # Right-Up (45° movement)
-    5: np.array([-1, -1]),  # Left-Up (45° movement)
-    6: np.array([1, 1]),    # Right-Down (45° movement)
-    7: np.array([-1, 1]),   # Left-Down (45° movement)
-    8: np.array([0, 0]),    # No direction
-}
+0 -> Right (foward)
+1 -> Left (backward)
+2 -> Up
+3 -> Down
+4 -> Right-Up (45° movement)
+5 -> Left-Up (45° movement)
+6 -> Right-Down (45° movement)
+7 -> Left-Down (45° movement)
+8 -> No direction
 
 mapeamento da posição 2:
 0 -> __move_player

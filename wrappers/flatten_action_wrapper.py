@@ -3,6 +3,7 @@ import numpy as np
 from gymnasium import ActionWrapper, spaces
 from pettingzoo.utils.wrappers.base import BaseWrapper
 from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
+import functools
     
 class FlattenActionWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
     def __init__(self, env: AECEnv[AgentID, ObsType, ActionType]):
@@ -22,9 +23,15 @@ class FlattenActionWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         for dimension_size in self.dimensions:
            self.flattened_size *= dimension_size
 
+        self.action_spaces = {}
+        self.action_spaces['mock_string'] = spaces.Discrete(self.flattened_size)
+        for agent in self.env.possible_agents:
+            self.action_spaces[agent] = spaces.Discrete(self.flattened_size)
 
+
+    @functools.lru_cache(maxsize=None)
     def action_space(self, agent: str = None) -> spaces.Discrete:
-        return spaces.Discrete(self.flattened_size)
+        return self.action_spaces[agent]
 
 
     # copy this to make a gymnasium wrapper if nedeed
@@ -63,6 +70,7 @@ class FlattenActionWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         # print("[FlattenActionWrapper] Recebeu: ", action, type(action))
 
         if isinstance(action, int) or \
+           isinstance(action, np.int32) or \
            isinstance(action, np.int64):
             assert 0 <= action < self.max_bound, "Invalid action index"
 

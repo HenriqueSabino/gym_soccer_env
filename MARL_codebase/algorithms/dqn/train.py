@@ -75,8 +75,8 @@ def main(env: AECEnv, logger: Logger, **cfg):
 
     # replay buffer:
     # env_dict = create_env_dict(env, int_type=np.uint8, float_type=np.float32)
-    observation_space = env.observation_space("mock_agent") # Space.Box
-    action_space = env.action_space("mock_agent") # Space.Discrete
+    observation_space = env.observation_space("mock_string") # Space.Box
+    action_space = env.action_space("mock_string") # Space.Discrete
     env_dict = {
         "rew" : {"shape": 2, "dtype": np.float32},
         "done": {"shape": 1, "dtype": np.float32},
@@ -120,7 +120,7 @@ def main(env: AECEnv, logger: Logger, **cfg):
     # print(obs.shape)
     # print("@@@@@@@@@@@@@@@")
 
-    input(">>> dqn.train.main 1")
+    # input(">>> dqn.train.main 1")
     
 
     for j in range(cfg.total_steps + 1):

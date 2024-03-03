@@ -37,5 +37,5 @@ class DictObservationBuilder(ObservationBuilder):
         return {
             "left_team": left_team_positions,
             "right_team": right_team_positions,
-            "ball_position": ball_position
+            "ball": ball_position
         }

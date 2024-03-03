@@ -24,13 +24,13 @@ from MARL_codebase.utils.loggers import FileSystemLogger
 # os.system(command)
 
 MARL_dqn_config = {
-    'total_steps': 100_000, 
-    'log_interval': 10000, 
-    'save_interval': 10000, 
-    'eval_interval': 10000, 
-    'eval_episodes': 5, 
-    'video_interval': 10_000, 
-    'video_frames': 500, 
+    'total_steps': 1_000, 
+    'log_interval': 100_000, 
+    'save_interval': 100_000, 
+    'eval_interval': 100_000, 
+    'eval_episodes': 10, 
+    'video_interval': 999, 
+    'video_frames': 60, 
     'name': 'dqn', 
     'model': {
         '_target_': 'MARL_codebase.algorithms.dqn.model.QNetwork', 
@@ -76,8 +76,8 @@ env = pettingzoo_wrappers.OrderEnforcingWrapper(env)
 env = FlattenActionWrapper(env)
 env = FromDictObservationToImageWrapper(env)
 env = PrepareObservationToMarlDqnWrapper(env)
-env = MaxStepsWrapper(env, max_steps=800)
-env = RecordEpisodeStatisticsWrapper(env, max_episodes=100)
+env = MaxStepsWrapper(env, max_steps=50)
+env = RecordEpisodeStatisticsWrapper(env, max_episodes=10_000)
 env = RandomChoiceOpponentWrapper(env)
 env = ReturnAllTeamAgentsRewardWrapper(env)
 # env = aec_to_parallel(env)

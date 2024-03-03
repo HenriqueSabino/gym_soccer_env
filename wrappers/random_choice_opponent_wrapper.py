@@ -27,7 +27,7 @@ class RandomChoiceOpponentWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         # Should swaap team with other_team (if not before_kickoff)
         _, _, _, team, other_team = self.player_selector.get_info()
         
-        action = self.env.action_space(agent="mock_agent").sample()
+        action = self.env.action_space(agent="mock_string").sample()
         if self.verbose:
             print(f'{team} picked {action} as a random action')
 

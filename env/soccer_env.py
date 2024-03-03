@@ -85,7 +85,6 @@ class SoccerEnv(AECEnv):
         self.first_player_index = first_player_index
         self.skip_kickoff = skip_kickoff
         self.seed() # Set random number generator and seed. MARL codebase expects this.
-        self.reward_range = "onde que isso ta sendo chamado"
 
         if self.skip_kickoff:
             self.is_before_kickoff = False
@@ -102,6 +101,16 @@ class SoccerEnv(AECEnv):
         self.pygame_clock = None
         self.verbose = verbose
 
+        # Define each agent observation and action space
+        self.observation_spaces = {}
+        self.observation_spaces["mock_string"] = self._get_observation_spaces()
+        self.action_spaces = {}
+        self.action_spaces["mock_string"] = self.action_translator.action_space()
+        for agent in self.possible_agents:
+            self.observation_spaces[agent] = self._get_observation_spaces()
+            self.action_spaces[agent] = self.action_translator.action_space()
+
+
     def _get_observation_spaces(self):
         if self.observation_type == 'image':
             shape = (FIELD_WIDTH, FIELD_HEIGHT, 3)
@@ -109,16 +118,16 @@ class SoccerEnv(AECEnv):
 
         elif self.observation_type == 'dict':
             return spaces.Dict({
-                TEAM_LEFT_NAME: spaces.Box(
+                TEAM_LEFT_NAME: spaces.Tuple([spaces.Box(
                     low=np.array([0, 0], dtype=np.float32),
                     high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
                     dtype=np.float32,
-                ),
-                TEAM_RIGHT_NAME: spaces.Box(
+                )] * self.half_number_agents),
+                TEAM_RIGHT_NAME: spaces.Tuple([spaces.Box(
                     low=np.array([0, 0], dtype=np.float32),
                     high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
                     dtype=np.float32,
-                ),
+                )] * self.half_number_agents),
                 "ball": spaces.Box(
                     low=np.array([0, 0], dtype=np.float32),
                     high=np.array([FIELD_WIDTH, FIELD_HEIGHT], dtype=np.float32),
@@ -171,10 +180,11 @@ class SoccerEnv(AECEnv):
         # [3] - Define for all agents rewards, cumulative rewards, etc.
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
+        self.storage = {agent: None for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         self.infos = {agent: {} for agent in self.agents}
-
+        
         # [4] - Define global state variables
         if self.skip_kickoff:
             self.is_before_kickoff = False
@@ -185,6 +195,7 @@ class SoccerEnv(AECEnv):
         self.right_team_score = 0
         self.ball_posession = None
         self.last_ball_posession = None
+        self.i = 1
 
         # [5] - Atualiza ball_posession de acordo com a posição inicial do time
         team_coordinates = self.all_coordinates[team]
@@ -212,205 +223,207 @@ class SoccerEnv(AECEnv):
         [4] - Apply action to selected player
         [5] - Check kickoff logic
         [6] - Check goal logic
-        [7] - Change selected player
-        [8] - Calculate reward
-        [9] - Update observation
-        [10] - Render
+        [7] - Calculate reward
+        [8] - Update player reward
+        [9] - Change selected player
+        [12] - Update observation
         [11] - Render
+        [12] - Check end of episode
         """
         # If needed -> References to see step() method:
         # https://pettingzoo.farama.org/content/environment_creation/
         # https://www.gymlibrary.dev/content/environment_creation/
         # https://github.com/Farama-Foundation/PettingZoo/blob/master/pettingzoo/butterfly/cooperative_pong/cooperative_pong.py#L226
-        def _step(action: tuple[int,int]):
-            # [1] - Translate action
-            t_action = self.action_translator.translate_action(action)
-            
-            # [2] - Get select player to make action and context info
-            player_name, foward_direction, _, team, other_team = self.player_selector.get_info()
-            dict_index, array_index = self.player_name_to_index[player_name]
 
-            # [3] - Removes, if defending, the current player of the defending list
-            self.clean_defended_positions(player_name, team)
-
-            # [4] - Apply action
-            penalty = self.actions(action, t_action.direction)
-            if not self.control_goalkeeper: 
-                self.auto_move_goalkeeper(team)
-            player_position = self.all_coordinates[team][dict_index]
-            ball_position = self.all_coordinates["ball"]
-
-            # [5] - Check kickoff logic
-            has_moved = action[1] == 0
-            if (not self.skip_kickoff
-                and self.is_before_kickoff
-                and has_moved
-                and SoccerEnv.is_near_1(player_position, ball_position, 1.2)):
-                    
-                    # Autograb the ball if near enough and 
-                    # no player is in the same pos of the ball 
-                    self.all_coordinates["ball"] = player_position
-                    self.ball_posession = team
-                    self.is_before_kickoff = False
-                    
-                    self.player_selector.playing_rotation()
-                    if self.verbose:
-                        print("@@@@@@@@ Aconteceu kickoff | Entrou na fase de playing rotation @@@@@@@@")
-
-            # [6] - Check goal logic
-            # Remember: y axis grows down ([0,1] points down), hence "> top" & "< botton"
-            left_team_goal = None
-            if (ball_position[0] == 0
-                and ball_position[1] > TOP_GOAL_Y
-                and ball_position[1] < BOTTOM_GOAL_Y):
-                
-                if self.verbose:
-                    print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
-                self.right_team_score += 1
-                left_team_goal = False
-                self.player_selector.kickoff_rotation(TEAM_LEFT_NAME)
-                if self.skip_kickoff:
-                    self.player_selector.playing_rotation()
-                self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
-
-                # Reset position
-                self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
-                self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
-                self.all_coordinates["ball"] = self.start_ball_position
-                self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
-                self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
-                self.player_directions = self.start_directions
-
-                team_coordinates = self.all_coordinates[TEAM_LEFT_NAME]
-                ball_position = self.all_coordinates["ball"]
-                for player_coord in team_coordinates:
-                    is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
-                    if is_near:
-                        self.all_coordinates["ball"] = player_coord
-                        self.ball_posession = team
-                        break
-
-            elif (ball_position[0] == FIELD_WIDTH
-                and ball_position[1] > TOP_GOAL_Y
-                and ball_position[1] < BOTTOM_GOAL_Y):
-                
-                if self.verbose:
-                    print(f"> GOL {TEAM_LEFT_NAME} GOL <")
-                self.left_team_score += 1
-                left_team_goal = True
-                self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME)
-                if self.skip_kickoff:
-                    self.player_selector.playing_rotation()
-                self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
-
-                # Reset position
-                self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
-                self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
-                self.all_coordinates["ball"] = self.start_ball_position
-                self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
-                self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
-                self.player_directions = self.start_directions
-
-                team_coordinates = self.all_coordinates[TEAM_RIGHT_NAME]
-                ball_position = self.all_coordinates["ball"]
-                for player_coord in team_coordinates:
-                    is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
-                    if is_near:
-                        self.all_coordinates["ball"] = player_coord
-                        self.ball_posession = team
-                        break
-
-            # [7] - Change selected player
-            self.player_selector.next_player()
-            player_name, _1, _2, _3, _4 = self.player_selector.get_info()
-            self.agent_selection = player_name
-
-            # [8] - Calculate reward
-            reward = penalty
+        # [1] - Translate action
+        t_action = self.action_translator.translate_action(action)
         
-            if self.ball_posession_reward:
-                if SoccerEnv.is_in_any_array(ball_position, self.all_coordinates[team]):
-                    reward += 0.1
+        # [2] - Get select player to make action and context info
+        player_name, foward_direction, _, team, other_team = self.player_selector.get_info()
+        dict_index, array_index = self.player_name_to_index[player_name]
 
-            if not self.sparse_net_score_reward:
-                if team == TEAM_LEFT_NAME:
-                    reward += self.left_team_score - self.right_team_score
-                else:
-                    reward += self.right_team_score - self.left_team_score
+        # [3] - Removes, if defending, the current player of the defending list
+        self.clean_defended_positions(player_name, team)
 
-            elif self.sparse_net_score_reward:
-                # XOR check if (team == TEAM_LEFT_NAME and not left_team_goal) or (team != TEAM_LEFT_NAME and left_team_goal):
-                if not(team == TEAM_LEFT_NAME ^ left_team_goal):
-                    reward += 1
-                else:
-                    reward -= 1
+        # [4] - Apply action
+        penalty = self.actions(action, t_action.direction)
+        if not self.control_goalkeeper: 
+            self.auto_move_goalkeeper(team)
+        player_position = self.all_coordinates[team][dict_index]
+        ball_position = self.all_coordinates["ball"]
 
-            if self.last_ball_posession is not None and self.last_ball_posession != self.ball_posession:
-                if team == self.ball_posession:
-                    reward += 0.01
-                else:
-                    reward -= 0.01
+        # [5] - Check kickoff logic
+        has_moved = action[1] == 0
+        if (not self.skip_kickoff
+            and self.is_before_kickoff
+            and has_moved
+            and SoccerEnv.is_near_1(player_position, ball_position, 1.2)):
+                
+                # Autograb the ball if near enough and 
+                # no player is in the same pos of the ball 
+                self.all_coordinates["ball"] = player_position
+                self.ball_posession = team
+                self.is_before_kickoff = False
+                
+                self.player_selector.playing_rotation()
+                if self.verbose:
+                    print("@@@@@@@@ Aconteceu kickoff | Entrou na fase de playing rotation @@@@@@@@")
 
-            # Update player reward
-            self.rewards[player_name] = reward
-            self._cumulative_rewards[player_name] += reward
+        # [6] - Check goal logic
+        # Remember: y axis grows down ([0,1] points down), hence "> top" & "< botton"
+        left_team_goal = None
+        if (ball_position[0] == 0
+            and ball_position[1] > TOP_GOAL_Y
+            and ball_position[1] < BOTTOM_GOAL_Y):
+            
+            if self.verbose:
+                print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
+            self.right_team_score += 1
+            left_team_goal = False
+            self.player_selector.kickoff_rotation(TEAM_LEFT_NAME)
+            if self.skip_kickoff:
+                self.player_selector.playing_rotation()
+            self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
 
-            # [9] - Update observation
-            self.observation = self.observation_builder.build_observation(
-                self.all_coordinates[TEAM_LEFT_NAME].copy(),
-                self.all_coordinates[TEAM_RIGHT_NAME].copy(),
-                self.all_coordinates["ball"].copy(),
-                self.all_coordinates["left_goalkeeper"].copy(),
-                self.all_coordinates["right_goalkeeper"].copy(),
-                team == TEAM_RIGHT_NAME,
-                self.colors
-            )
-            # if debug:
-            #     print("=-= DEBUG =-=")
-            #     print("=-= @@ observation @@ =-=")
-            #     print(self.observation)
-            #     print("=-= @@ all_coordinates @@ =-=")
-            #     print("=-=  =-=")
-            #     print(self.all_coordinates)
-            #     print("=-= @@ player_directions @@ =-=")
-            #     print(self.player_directions)
-            #     print("=-= @@ action @@ =-=")
-            #     print(action)
-            #     print("=-= @@ t_action.direction @@ =-=")
-            #     print(t_action.direction)
-            #     print("=-= DEBUG =-=")
+            # Reset position
+            self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
+            self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
+            self.all_coordinates["ball"] = self.start_ball_position
+            self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+            self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
+            self.player_directions = self.start_directions
 
-            # [10] - Render
-            if self.render_mode == 'human':
-                self.render()
-            # else:
-            #     self.debug_render()
+            team_coordinates = self.all_coordinates[TEAM_LEFT_NAME]
+            ball_position = self.all_coordinates["ball"]
+            for player_coord in team_coordinates:
+                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                if is_near:
+                    self.all_coordinates["ball"] = player_coord
+                    self.ball_posession = team
+                    break
 
-            # [11] - Check end of episode
-            terminated = (
-                self.target_score == self.left_team_score or
-                self.target_score == self.right_team_score
-            )
+        elif (ball_position[0] == FIELD_WIDTH
+            and ball_position[1] > TOP_GOAL_Y
+            and ball_position[1] < BOTTOM_GOAL_Y):
+            
+            if self.verbose:
+                print(f"> GOL {TEAM_LEFT_NAME} GOL <")
+            self.left_team_score += 1
+            left_team_goal = True
+            self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME)
+            if self.skip_kickoff:
+                self.player_selector.playing_rotation()
+            self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
 
-            # Must return:
-            # observation (ObsType): An element of the environment's observation_space as the next observation due to the agent actions.
-            # reward (SupportsFloat): The reward as a result of taking the action.
-            # terminated (bool): Whether the agent reaches the terminal state (as defined under the MDP of the task)
-            # truncated (bool): Whether the truncation condition outside the scope of the MDP is satisfied.
-            ##                # Typically, this is a timelimit, but could also be used to indicate an agent physically going out of bounds. 
-            ##                # Can be used to end the episode prematurely before a terminal state is reached.
-            ##                # If true, the user needs to call reset.
-            # info (dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
-            return self.observation, reward, terminated, False, {}
+            # Reset position
+            self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
+            self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
+            self.all_coordinates["ball"] = self.start_ball_position
+            self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+            self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
+            self.player_directions = self.start_directions
+
+            team_coordinates = self.all_coordinates[TEAM_RIGHT_NAME]
+            ball_position = self.all_coordinates["ball"]
+            for player_coord in team_coordinates:
+                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                if is_near:
+                    self.all_coordinates["ball"] = player_coord
+                    self.ball_posession = team
+                    break
+
+        # [7] - Calculate reward
+        reward = penalty
     
-        if isinstance(action, list):
-            cum_reward = []
-            for a in action:
-                last_observation, r, terminated, truncated, info = _step(a)
-                cum_reward.append(r)
-                return last_observation, r, terminated, truncated, info
-        else:
-            return _step(action)
+        if self.ball_posession_reward:
+            if SoccerEnv.is_in_any_array(ball_position, self.all_coordinates[team]):
+                reward += 0.1
+
+        if not self.sparse_net_score_reward:
+            if team == TEAM_LEFT_NAME:
+                reward += self.left_team_score - self.right_team_score
+            else:
+                reward += self.right_team_score - self.left_team_score
+
+        elif self.sparse_net_score_reward:
+            # XOR check if (team == TEAM_LEFT_NAME and not left_team_goal) or (team != TEAM_LEFT_NAME and left_team_goal):
+            if not(team == TEAM_LEFT_NAME ^ left_team_goal):
+                reward += 1
+            else:
+                reward -= 1
+
+        if self.last_ball_posession is not None and self.last_ball_posession != self.ball_posession:
+            if team == self.ball_posession:
+                reward += 0.01
+            else:
+                reward -= 0.01
+
+        # [8] - Update player reward
+        self._cumulative_rewards[player_name] = 0
+        self.storage[player_name] = reward
+        # Only update reward dict after a full cycle of steps (
+        # patting_zoo api test obliges this
+        if self.i % self.number_agents == 0:
+            self.i = 1
+            for agent in self.agents:
+                self.rewards[agent] = self.storage[agent]
+                # self._cumulative_rewards[player_name] += self.storage[agent]
+
+        self._accumulate_rewards() # Adds .rewards to ._cumulative_rewards
+
+        # [9] - Change selected player
+        self.player_selector.next_player()
+        next_name, _1, _2, _3, _4 = self.player_selector.get_info()
+        self.agent_selection = next_name
+
+        # [10] - Update observation
+        self.observation = self.observation_builder.build_observation(
+            self.all_coordinates[TEAM_LEFT_NAME].copy(),
+            self.all_coordinates[TEAM_RIGHT_NAME].copy(),
+            self.all_coordinates["ball"].copy(),
+            self.all_coordinates["left_goalkeeper"].copy(),
+            self.all_coordinates["right_goalkeeper"].copy(),
+            team == TEAM_RIGHT_NAME,
+            self.colors
+        )
+        # if debug:
+        #     print("=-= DEBUG =-=")
+        #     print("=-= @@ observation @@ =-=")
+        #     print(self.observation)
+        #     print("=-= @@ all_coordinates @@ =-=")
+        #     print("=-=  =-=")
+        #     print(self.all_coordinates)
+        #     print("=-= @@ player_directions @@ =-=")
+        #     print(self.player_directions)
+        #     print("=-= @@ action @@ =-=")
+        #     print(action)
+        #     print("=-= @@ t_action.direction @@ =-=")
+        #     print(t_action.direction)
+        #     print("=-= DEBUG =-=")
+
+        # [11] - Render
+        if self.render_mode == 'human':
+            self.render()
+        # else:
+        #     self.debug_render()
+
+        # [12] - Check end of episode
+        terminated = (
+            self.target_score == self.left_team_score or
+            self.target_score == self.right_team_score
+        )
+
+
+        # Must return (somente para ambientes gymnasium; não para AECEnv):
+        # observation (ObsType): An element of the environment's observation_space as the next observation due to the agent actions.
+        # reward (SupportsFloat): The reward as a result of taking the action.
+        # terminated (bool): Whether the agent reaches the terminal state (as defined under the MDP of the task)
+        # truncated (bool): Whether the truncation condition outside the scope of the MDP is satisfied.
+        ##                # Typically, this is a timelimit, but could also be used to indicate an agent physically going out of bounds. 
+        ##                # Can be used to end the episode prematurely before a terminal state is reached.
+        ##                # If true, the user needs to call reset.
+        # info (dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
+        return self.observation, self.rewards[player_name], terminated, False, {}
     
 
     def __initialize_players(self, 
@@ -511,7 +524,6 @@ class SoccerEnv(AECEnv):
             TEAM_RIGHT_NAME: self.agents[self.half_number_agents:]
         }
         self.number_agents = num_agents
-        self.n_agents = num_agents # n_agents is for compatibiliy with MARL codebase
         self.left_start = left_start
         self.control_goalkeeper = control_goalkeeper
 
@@ -526,7 +538,6 @@ class SoccerEnv(AECEnv):
 
             # Decrement
             self.number_agents += -2
-            self.n_agents += -2
             self.half_number_agents += -1
 
         # First n players will be left side and last n will be right side
@@ -897,7 +908,7 @@ class SoccerEnv(AECEnv):
                         self.ball_posession = team
 
                         penalty = +0.01 # Sobrescreve -0.01 caso entre no if
-                        break
+                        return penalty
                     else:
                         penalty = -0.01
             else:
@@ -1201,7 +1212,7 @@ class SoccerEnv(AECEnv):
 
     
     def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
+        self.random_number_generator, seed = seeding.np_random(seed)
         return [seed]
     
 
@@ -1242,10 +1253,10 @@ class SoccerEnv(AECEnv):
     
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self, agent: str) -> Union[spaces.Box, Dict]:
-        return self._get_observation_spaces()
+    def observation_space(self, agent: str) -> spaces.Dict:
+        return self.observation_spaces[agent]
 
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent: str) -> spaces.MultiDiscrete:
-        return self.action_translator.action_space()
+        return self.action_spaces[agent]

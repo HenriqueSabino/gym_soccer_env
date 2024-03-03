@@ -40,7 +40,7 @@ env.reset()
 
 for __ in range(20):
     for _ in range(params['num_agents']):
-        sample = env.action_space("mock_player").sample()
+        sample = env.action_space("mock_string").sample()
         env.step((sample[0], 0)) # action deve ser uma tupla ou uma lista de tuplas
         # sleep(6000)
 

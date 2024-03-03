@@ -4,6 +4,7 @@ import numpy as np
 from gymnasium import ObservationWrapper, spaces
 from pettingzoo.utils.wrappers.base import BaseWrapper
 from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
+import functools
 
 class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
 
@@ -13,10 +14,17 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
         ), "AssertOutOfBoundsWrapper is only compatible with AEC environments"
         super().__init__(env)
 
-
-    def observation_space(self, agent: AgentID) -> spaces.Box:
         shape = (consts.FIELD_WIDTH+1, consts.FIELD_HEIGHT+1, 4)
-        return spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
+
+        self.observation_spaces = {}
+        self.observation_spaces['mock_string'] = spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
+        for agent in self.env.possible_agents:
+            self.observation_spaces[agent] = spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
+
+
+    @functools.lru_cache(maxsize=None)
+    def observation_space(self, agent: AgentID) -> spaces.Box:
+        return self.observation_spaces[agent]
 
     # Copy this to create a gymnasium wrapper if nedeed
     # def observation(self, observation: dict) -> np.ndarray:
@@ -38,7 +46,7 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
     #         x, y = player_position 
     #         image[int(x), int(y), 2] = 255  # Set the green channel to 255 for right team players
 
-    #     ball_x, ball_y = observation["ball_position"]
+    #     ball_x, ball_y = observation["ball"]
     #     image[int(ball_x), int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball, int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball
         
     #     return image
@@ -64,7 +72,7 @@ class FromDictObservationToImageWrapper(BaseWrapper[AgentID, ObsType, ActionType
             x, y = player_position 
             image[int(x), int(y), 2] = 255  # Set the green channel to 255 for right team players
 
-        ball_x, ball_y = observation["ball_position"]
+        ball_x, ball_y = observation["ball"]
         image[int(ball_x), int(ball_y), 3] = 255  # Set the blue channel to 255 for the ball
         
         return image
