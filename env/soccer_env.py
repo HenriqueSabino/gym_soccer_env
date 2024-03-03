@@ -936,7 +936,7 @@ class SoccerEnv(AECEnv):
 
         # Ao chegar na posição nova, pega a bola automaticamente caso a bola esteja livre
         if self.ball_posession is not other_team and \
-           SoccerEnv.is_near_1(new_position, ball_position, 1.0):
+           SoccerEnv.is_near_1(new_position, ball_position, 1.2):
             self.all_coordinates["ball"] = new_position
             self.last_ball_posession = self.ball_posession
             self.ball_posession = team
