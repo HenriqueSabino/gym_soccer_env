@@ -23,7 +23,7 @@ class ReturnAllTeamAgentsRewardWrapper(BaseWrapper[AgentID, ObsType, ActionType]
         _, _, _, team, other_team = self.player_selector.get_info()
         r = []
         for agent in self.team_agents[team]:
-            r.append(self._cumulative_rewards[agent])
+            r.append(self.cumulative_rewards[agent])
         
         return (
             observation,

@@ -179,8 +179,9 @@ class SoccerEnv(AECEnv):
         
         # [3] - Define for all agents rewards, cumulative rewards, etc.
         self.rewards = {agent: 0 for agent in self.agents}
-        self._cumulative_rewards = {agent: 0 for agent in self.agents}
-        self.storage = {agent: None for agent in self.agents}
+        self._cumulative_rewards = {agent: 0 for agent in self.agents} # Internal used by AECEnv base class
+        self.cumulative_rewards = {agent: 0 for agent in self.agents} # used in wrappers
+        self.storage = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         self.infos = {agent: {} for agent in self.agents}
@@ -195,7 +196,7 @@ class SoccerEnv(AECEnv):
         self.right_team_score = 0
         self.ball_posession = None
         self.last_ball_posession = None
-        self.i = 1
+        self.i = 0
 
         # [5] - Atualiza ball_posession de acordo com a posição inicial do time
         team_coordinates = self.all_coordinates[team]
@@ -359,15 +360,16 @@ class SoccerEnv(AECEnv):
                 reward -= 0.01
 
         # [8] - Update player reward
-        # self._cumulative_rewards[player_name] = 0 # Essa linha ta no step da documentação(pettingzoo.farama.org/content/environment_creation/), mas não sei se ta certo.
+        self._cumulative_rewards[player_name] = 0
         self.storage[player_name] = reward
-        # Only update reward dict after a full cycle of steps (
+        # Only update reward dict after a full cycle of steps
         # patting_zoo api test obliges this
+        self.i += 1
         if self.i % self.number_agents == 0:
-            self.i = 1
+            self.i = 0
             for agent in self.agents:
                 self.rewards[agent] = self.storage[agent]
-                # self._cumulative_rewards[player_name] += self.storage[agent]
+                self.cumulative_rewards[agent] += self.storage[agent]
 
         self._accumulate_rewards() # Adds .rewards to ._cumulative_rewards
 
