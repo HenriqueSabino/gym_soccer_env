@@ -1,9 +1,9 @@
-total_steps: 10000
-log_interval: 10000
-save_interval: 10000
-eval_interval: 10000
-eval_episodes: 5
-video_interval: 1
+total_steps: 1000000
+log_interval: 100000
+save_interval: 100000
+eval_interval: 100000
+eval_episodes: 10
+video_interval: 100000
 video_frames: 500
 name: dqn
 model:

@@ -23,43 +23,43 @@ from MARL_codebase.utils.loggers import FileSystemLogger
 # os.system(command)
 
 MARL_dqn_config = {
-    'total_steps': 1_000, 
+    'total_steps': 1_000_000,  # Quantidade de steps do modelo
     'log_interval': 100_000, 
     'save_interval': 100_000, 
-    'eval_interval': 100_000, 
-    'eval_episodes': 10, 
-    'video_interval': 998, 
-    'video_frames': 500, 
+    'eval_interval': 100_000,  # Entra na função _evaluate a cada eval_interval steps
+    'eval_episodes': 10,       # Utiliza o ambiente até chegar em done (ou truncated) eval_episodes vezes
+    'video_interval': 100_000, # Salva um mp4 a cada video_interval steps
+    'video_frames': 500,       # Quantos frames tem o mp4
     'name': 'dqn', 
     'model': {
         '_target_': 'MARL_codebase.algorithms.dqn.model.QNetwork', 
-        'layers': [64, 64], 
-        'parameter_sharing': False, 
-        'use_orthogonal_init': True, 
-        'device': 'cuda'
+        'layers': [64, 64],           # Camadas escondidas do modelo (não usa cnn)
+        'parameter_sharing': False,   # ??
+        'use_orthogonal_init': True,  # ??
+        'device': 'cuda'              # Onde o torch executa: 'cpu' ou 'cuda'
     }, 
-    'training_start': 2000, 
-    'buffer_size': 100_000, # 10_000,
+    'training_start': 2000,           # Quantos steps coletando obs pro replay buffer antes de iniciar o treino
+    'buffer_size': 100_000, # 10_000, # Aviso: consome muita RAM | Quantidade de linhas no replay buffer
     'optimizer': 'Adam', 
     'lr': 0.0003, 
     'gamma': 0.99, 
     'batch_size': 128, 
     'grad_clip': False, 
-    'use_proper_termination': True, 
+    'use_proper_termination': True,   # Não usado
     'standardize_returns': True, 
-    'eps_decay_style': 'linear', 
-    'eps_start': 1.0, 
-    'eps_end': 0.05, 
-    'eps_decay': 6.5, 
-    'greedy_epsilon': 0.05, 
-    'target_update_interval_or_tau': 200
+    'eps_decay_style': 'linear',      #########################
+    'eps_start': 1.0,                 # Decaimento do epsilon #
+    'eps_end': 0.05,                  #                       #
+    'eps_decay': 6.5,                 #########################
+    'greedy_epsilon': 0.05,           # Change de explorar em vez de exploitar
+    'target_update_interval_or_tau': 200 # ??
 }
 
 env_params = {
-    'render_mode': 'rgb_array', 
-    'observation_format': 'dict', 
-    'num_agents' : 6,
-    'target_score': 1,
+    'render_mode': 'rgb_array',       # 'rgb_array' ou 'human'
+    'observation_format': 'dict',     # 'image' ou 'dict'
+    'num_agents' : 6,                 # metade para cada time (-2 se não controlar goleiro)
+    'target_score': 1,                # Done quando algum time a fazer target_score gols
     'left_start': True,
     'first_player_index': 2,
     'control_goalkeeper': False,
@@ -69,16 +69,18 @@ env_params = {
 }
 
 def make_MARL_codabase_wrapped_env(env_params: dict):
+    # Instancia SoccerEnv
     env = make_raw_env(env_params)
 
+    # Coloca os wrappers
     env = pettingzoo_wrappers.AssertOutOfBoundsWrapper(env)
     env = pettingzoo_wrappers.OrderEnforcingWrapper(env)
 
-    env = FlattenActionWrapper(env)
-    env = FromDictObservationToImageWrapper(env)
-    env = PrepareObservationToMarlDqnWrapper(env)
-    env = MaxStepsWrapper(env, max_steps=50)
-    env = RecordEpisodeStatisticsWrapper(env, max_episodes=10_000)
+    env = FlattenActionWrapper(env) # Multidiscrete -> Discrete
+    env = FromDictObservationToImageWrapper(env) # Dict -> Box(121, 81, 4)
+    env = PrepareObservationToMarlDqnWrapper(env) # Faz ajustas para rodar com 
+    env = MaxStepsWrapper(env, max_steps=100) # Retorna truncated(True) quando a partida chega em max_steps
+    env = RecordEpisodeStatisticsWrapper(env, max_episodes=10_000) # Armazena as estatísticas de até max_episodes
     env = RandomChoiceOpponentWrapper(env)
     env = ReturnAllTeamAgentsRewardWrapper(env)
     # env = aec_to_parallel(env)

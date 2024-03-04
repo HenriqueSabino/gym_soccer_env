@@ -3,7 +3,7 @@ import math
 
 import hydra
 import torch
-from cpprb import ReplayBuffer, create_before_add_func, create_env_dict
+from cpprb import ReplayBuffer #, create_before_add_func, create_env_dict
 from omegaconf import DictConfig
 
 from MARL_codebase.utils import wrappers
@@ -67,6 +67,64 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon, verbose=False):
         infos.append(info)
 
     return infos
+
+
+################################################################################
+# Função copiada do arquivo cpprb/util.py da biblioteca cpprb versão 10.2.0
+# Essa função tem 2 linhas alteradas para funcionar com ambientes AECEnv
+
+def create_before_add_func(env):
+    from gymnasium.spaces import Box, Discrete, MultiDiscrete, MultiBinary, Tuple, Dict
+
+    """
+    Create function to be used before `ReplayBuffer.add`
+
+    Parameters
+    ----------
+    env : gym.Env
+        Environment for before_func
+
+    Returns
+    -------
+    before_add : callable
+        Function to be used before `ReplayBuffer.add`
+    """
+    def no_convert(name,v):
+        return {f"{name}": v}
+
+    def convert_from_tuple(name,_tuple):
+        return {f"{name}{i}": v for i,v in enumerate(_tuple)}
+
+    def convert_from_dict(name,_dict):
+        return {f"{name}_{key}":v for key,v in _dict.items()}
+
+    # 2 linhas alteradas
+    observation_space = env.observation_space("mock_string")
+    action_space = env.action_space("mock_string")
+
+    if isinstance(observation_space, Tuple):
+        obs_func = convert_from_tuple
+    elif isinstance(observation_space, Dict):
+        obs_func = convert_from_dict
+    else:
+        obs_func = no_convert
+
+    if isinstance(action_space, Tuple):
+        act_func = convert_from_tuple
+    elif isinstance(action_space, Dict):
+        act_func = convert_from_dict
+    else:
+        act_func = no_convert
+
+    def before_add(obs,act,next_obs,rew,done):
+        return {**obs_func("obs",obs),
+                **act_func("act",act),
+                **obs_func("next_obs",next_obs),
+                "rew": rew,
+                "done": done}
+
+    return before_add
+################################################################################
 
 
 def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg):
