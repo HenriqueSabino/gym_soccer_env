@@ -18,7 +18,12 @@ class VideoRecorder:
         imageio.mimsave(f"{filename}", self.frames, fps=self.fps)
 
 
-def record_episodes(act_func, n_timesteps, path, env_params: dict, make_fn: callable):
+def record_episodes(make_fn: callable, 
+                    act_func: callable, 
+                    n_timesteps: int, 
+                    path, 
+                    env_params: dict
+                    ):
     recorder = VideoRecorder()
     done = True
 

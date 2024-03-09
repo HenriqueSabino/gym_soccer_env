@@ -11,7 +11,7 @@ class DictObservationBuilder(ObservationBuilder):
     def build_observation(self,
                           left_team_positions: list, 
                           right_team_positions: list, 
-                          ball_position: list,
+                          ball_position: Union[list, np.ndarray],
                           l_goalkeeper_position: Union[list, np.ndarray],
                           r_goalkeeper_position: Union[list, np.ndarray],
                           flip_side: bool,

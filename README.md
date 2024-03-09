@@ -32,7 +32,7 @@ python petting_zoo_api_test.py # Executa o teste de API do pedtingzoo
 
 1. Erro ao tentar buildar algum pacote com `pip install -r requirements.txt`
 
-Solução: Baixar o instalador do VS Studio e baixar *Desenvolvimento para desktop com C++*. Isso vai baixar o SDK do windows com o compilador usado para buildar o pacote.
+Solução: Baixar o instalador do Visual Studio e baixar *Desenvolvimento para desktop com C++*. Isso vai baixar o SDK do windows com o compilador usado para buildar o pacote.
 
 Links úteis:
 - https://stackoverflow.com/questions/64261546/how-to-solve-error-microsoft-visual-c-14-0-or-greater-is-required-when-inst

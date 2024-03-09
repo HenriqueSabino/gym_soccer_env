@@ -4,11 +4,12 @@ import json
 import logging
 import math
 import time
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
+import shutil
 
 
 def squash_info(info):
@@ -146,44 +147,52 @@ class FileSystemLogger(Logger):
         super().__init__(project_name, cfg)
 
         # input(">>> AQUI FileSystemLogger 1")
-        self.results_path = "MARL_codebase/results.csv"
-        self.config_path = "MARL_codebase/used_config.yaml"
+        self.base_path = f"./train_results/{cfg.experiment_folder_name}"
+        self.results_path = f"{self.base_path}/statistics.csv"
+        self.config_path = f"{self.base_path}/used_config.yaml"
+        self.template_config_path = f"./train_results/template_config.yaml"
+
+        # Cria uma config YAML dentro da pasta do experimento
+        shutil.copyfile(self.template_config_path, self.config_path)
         with open(self.config_path, "w") as f:
             OmegaConf.save(cfg, f)
         
 
-    def log_metrics(self, metrics):
+    def log_metrics(self, metrics: list[dict[str, Union[int, float]]]):
         # input(">>> AQUI FileSystemLogger 3")
-        d = squash_info(metrics)
-        columns = list(d.keys())
-        columns.remove("environment_steps")
-        columns = sorted(columns)
-        columns = ["environment_steps"] + columns
-        df = pd.DataFrame.from_dict([d])[columns]
+
+        # d: dict = squash_info(metrics)
+        # columns = list(d.keys())
+        # columns.remove("environment_steps")
+        # columns = sorted(columns)
+        # columns = ["environment_steps"] + columns
+        # df = pd.DataFrame.from_dict([d])[columns]
         
         # print(df)
         # print(d)
 
-        if "mean_episode_return" in d.keys():
-            episode_return = d["mean_episode_return"]
-        elif "mean_episode_returns" in d.keys():
-            episode_return = d["mean_episode_returns"]
-        elif "episode_return" in d.keys():
-            episode_return = d["episode_return"]
-        else:
-            raise KeyError("Didct must contain episode_return or mean_episode_return or mean_episode_returns key")
-        
+        # if "mean_episode_return" in d.keys():
+        #     episode_return = d["mean_episode_return"]
+        # elif "mean_episode_returns" in d.keys():
+        #     episode_return = d["mean_episode_returns"]
+        # elif "episode_return" in d.keys():
+        #     episode_return = d["episode_return"]
+        # else:
+        #     raise KeyError("Didct must contain episode_return or mean_episode_return or mean_episode_returns key")
+        # steps = metrics[0]['steps']
+
+        df = pd.DataFrame(metrics)
         # Since we are appending, we only want to write the csv headers if the file does not already exist
         # the following codeblock handles this automatically
         with open(self.results_path, "a") as f:
             df.to_csv(f, header=f.tell() == 0, index=False)
-        # input(">>> analisar d e df")
-        self.print_progress(
-            d["updates"],
-            d["environment_steps"],
-            episode_return,
-            len(metrics) - 1,
-        )
+        # # input(">>> analisar d e df")
+        # self.print_progress(
+        #     d["updates"],
+        #     d["environment_steps"],
+        #     episode_return,
+        #     len(metrics) - 1,
+        # )
 
     def get_state(self):
         # input(">>> AQUI FileSystemLogger 2")

@@ -1,5 +1,6 @@
 from copy import deepcopy
 import math
+import os
 
 import hydra
 import torch
@@ -13,6 +14,8 @@ from MARL_codebase.algorithms.dqn.model import QNetwork
 from pettingzoo.utils.env import ActionType, AECEnv, AgentID, ObsType
 import gymnasium
 import numpy as np
+
+from env.constants import TEAM_LEFT_NAME, TEAM_RIGHT_NAME
 
 def _epsilon_schedule(decay_style, eps_start, eps_end, eps_decay, total_steps):
     """
@@ -64,7 +67,7 @@ def _evaluate(env, model, eval_episodes, greedy_epsilon, verbose=False):
                     env.step(a)
             obs, _, done, truncated, info = env.last()
 
-        infos.append(info)
+        infos.append(env.infos)
 
     return infos
 
@@ -127,11 +130,11 @@ def create_before_add_func(env):
 ################################################################################
 
 
-def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg):
+def main(env: AECEnv, logger: Logger, env_params: dict, cfg: DictConfig, make_env_fn: callable):
+    folder_name = cfg.experiment_folder_name
 
-    cfg = DictConfig(cfg)
+    # replay buffer ############################################################
 
-    # replay buffer:
     # env_dict = create_env_dict(env, int_type=np.uint8, float_type=np.float32)
     observation_space = env.observation_space("mock_string") # Space.Box
     action_space = env.action_space("mock_string") # Space.Discrete
@@ -146,8 +149,11 @@ def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg
     # print(cfg.buffer_size)
     # print(env_dict)
     rb = ReplayBuffer(cfg.buffer_size, env_dict)
-
     before_add = create_before_add_func(env)
+
+    ############################################################################
+
+    # Instancia o modelo
     model = QNetwork(
         env.half_number_agents,
         observation_space,
@@ -168,49 +174,68 @@ def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg
     # training loop:
     env.reset()
     obs, reward, terminatd, truncated, reset_infos = env.last()
-
-    # print("@@@@@@@@@@@@@@@")
-    # print(cfg)
-    # print("@@@@@@@@@@@@@@@")
-    # print(env)
-    # print(obs)
-    # print(obs.shape)
-    # print("@@@@@@@@@@@@@@@")
-
-    # input(">>> dqn.train.main 1")
     
+    # Loop principal do treino
     for j in range(cfg.total_steps + 1):
         
-        # input(">>> dqn.train.main 2")
+        # Testa o modelo
         if j % cfg.eval_interval == 0:
-            infos = _evaluate(env, model, cfg.eval_episodes, cfg.greedy_epsilon)
+            l = cfg.eval_episodes
+            infos = _evaluate(env, model, l, cfg.greedy_epsilon)
 
-            # input(">>> dqn.train.main 3")
             # Prepare data from infos to pass to the logger
             prepared_info_of_each_episode = []
-            for i in infos:
-                # print(i)
+            for info in infos:
+
+                some_agent = env.agents[0]
+                return_per_agent = [info[agent]['episode_return'] for agent in env.agents]
+
+                # if env_params['left_start']:
+                team_indexes = env.team_to_indexes[TEAM_LEFT_NAME]
+                other_team_indexes = env.team_to_indexes[TEAM_RIGHT_NAME]
+                team_returns = dict(zip(env.left_agent_names, return_per_agent[team_indexes]))
+                other_team_returns = dict(zip(env.right_agent_names, return_per_agent[other_team_indexes]))
+                # else:
+                #     team_indexes = env.team_to_indexes[TEAM_RIGHT_NAME]
+                #     other_team_indexes = env.team_to_indexes[TEAM_LEFT_NAME]
+                #     team_returns = dict(zip(env.right_agent_names, return_per_agent[team_indexes]))
+                #     other_team_returns = dict(zip(env.left_agent_names, return_per_agent[other_team_indexes]))
+
                 episode_info = {}
-                episode_info["episode_return"]      = i["episode_return"]
-                episode_info["team_episode_return"] = i["team_episode_return"]
-                episode_info["episode_length"]      = i["episode_length"]
-                episode_info["episode_time"]        = i["episode_time"]
-
+                # episode_info["episode_return"]      = info["episode_return"
+                episode_info["team_episode_return"] = info[some_agent]["team_episode_return"]
+                episode_info["episode_length"]      = info[some_agent]["episode_length"]
+                # episode_info["episode_time"]        = i["episode_time"]
+                episode_info = {**episode_info, **team_returns, **other_team_returns}
                 prepared_info_of_each_episode.append(episode_info)
-            prepared_info_of_each_episode.append(
-                {'updates': j, 'environment_steps': j, 'epsilon': eps_sched(j)}
-            )
 
-            # input(">>> dqn.train.main 4")
-            logger.log_metrics(prepared_info_of_each_episode)
-            episode_return = episode_info["episode_return"]
-            print(f"eval episode return: {episode_return}")
+            # Calculates average of each key. list[dict[(key) str, (value) int | float]]
+            final_dict = {}
+            for k in prepared_info_of_each_episode[0].keys():
+                average = sum(d[k] for d in prepared_info_of_each_episode) / l
+                final_dict[k] = [average]
+            final_dict['steps'] = j
+            final_dict['epsilon'] = eps_sched(j)
+            
+            # prepared_info_of_each_episode.append(
+            #     {'updates': j, 'environment_steps': j, 'epsilon': eps_sched(j)}
+            # )
 
-        
-        # input(">>> dqn.train.main 5")
+            # Salva métrica/estatísticas em um csv
+            logger.log_metrics(final_dict)
+            
+            # Print média das recompensas do time e de cada agente
+            team_episode_return = final_dict["team_episode_return"][0]
+            string = f"{l} eval average: team_episode_return [{team_episode_return:.4f}]"
+            for agent in env.left_agent_names: # Hardcode iterable
+                string += f" | {agent}_return [{final_dict[agent][0]:.4f}]"
+            print(string)
+
+        # Modelo escolhe uma ação
         act = model.act(obs, epsilon=eps_sched(j))
         # print("action", act)
-        # input(">>> dqn.train.main 6")
+
+        # Aplica ação no ambiente e retorna observação, recompensa, done, truncated, info
         if isinstance(act, int) or isinstance(act, np.int64):
             # print(f"act: {act} | type {type(act)}")
             env.step(act)
@@ -220,19 +245,15 @@ def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg
                 env.step(a)
         next_obs, rew, done, truncated, info = env.last()
 
-        # input(">>> dqn.train.main 7")
-
+        # Acrescenta experiência no replay buffer
         rb.add(
             **before_add(obs=obs, act=act, next_obs=next_obs, rew=rew, done=done)
         )
-        # input(">>> dqn.train.main 8")
         
-
+        # Atrasa o treino para coletar experiência no replay buffer
         if j > cfg.training_start:
             batch: dict[str, np.ndarray] = rb.sample(cfg.batch_size)
             # print(batch)
-
-            # Usa isso pra setar o dict labels_to_index no model.py
             # print({k: i for i, k in enumerate(batch)})
 
             batch = [
@@ -240,29 +261,23 @@ def main(env: AECEnv, logger: Logger, env_params: dict, make_fn: callable, **cfg
             ]
 
             model.update(batch)
-        # input(">>> dqn.train.main 9")
         
+        # Se terminou reseta
         if done or truncated:
             env.reset()
             obs, reward, terminatd, truncated, info = env.last()
         else:
             obs = next_obs
-        # input(">>> dqn.train.main 10")
 
+        # Utiliza o modelo treinado para gravar um vídeo
         if cfg.video_interval and j % cfg.video_interval == 0:
             record_episodes(
-                # deepcopy(env),
+                # deepcopy(env), # Deep copy não funciona com ambientes AECEnv
+                make_env_fn, # Essa função que cria o env do zero substitui deepcopy
                 lambda x: model.act(x, cfg.greedy_epsilon),
                 cfg.video_frames,
-                f"./videos/step-{j}.mp4",
-                env_params,
-                make_fn
+                f"./train_results/{folder_name}/videos/step-{j}.mp4",
+                env_params
             )
-            
-        # input(">>> dqn.train.main 11")
         
-    torch.save(model.state_dict(), "./trained_models/latest_trained_model.tch")
-
-
-if __name__ == "__main__":
-    main()
+    torch.save(model.state_dict(), f"./train_results/{folder_name}/{cfg.model_name}_trained_model.tch")

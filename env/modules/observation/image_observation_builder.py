@@ -1,4 +1,6 @@
+from typing import Union
 from PIL import Image, ImageDraw
+import numpy as np
 
 from env.modules.observation.observation_builder import ObservationBuilder
 from env.modules.draw.field_drawer import FieldDrawer
@@ -12,9 +14,9 @@ class ImageObservationBuilder(ObservationBuilder):
     def build_observation(self, 
                           left_team_positions: list, 
                           right_team_positions: list, 
-                          ball_position: list, 
-                          l_goalkeeper_position: list,
-                          r_goalkeeper_position: list,
+                          ball_position: Union[list, np.ndarray], 
+                          l_goalkeeper_position: Union[list, np.ndarray],
+                          r_goalkeeper_position: Union[list, np.ndarray],
                           flip_side: bool,
                           colors: dict[str, any]
                           ) -> Image:

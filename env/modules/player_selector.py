@@ -75,10 +75,10 @@ class PlayerSelector:
         self._skip_kickoff_rotation = skip_kickoff
         if skip_kickoff:
             self.selector_logic_callback = self._after_kickoff_logic_callback
-            self._is_using_playing_rotation = True
+            # self._is_using_playing_rotation = True
         else:
             self.selector_logic_callback = self._before_kickoff_logic_callback
-            self._is_using_playing_rotation = False
+            # self._is_using_playing_rotation = False
 
         self.verbose = verbose
             
@@ -144,7 +144,7 @@ class PlayerSelector:
         Change selector logic callback to pick next player considering playing stage.
         """
         self.selector_logic_callback = self._after_kickoff_logic_callback
-        self._is_using_playing_rotation = True
+        # self._is_using_playing_rotation = True
 
         if self._next_team_to_play_after_kickoff == TEAM_LEFT_NAME:
             self._index = 0 # Start moving the left team index 0 player
@@ -154,15 +154,13 @@ class PlayerSelector:
         self._index -= 1 # Remove the +1 in the next selection
 
 
-    def kickoff_rotation(self, team_to_play: str):
+    def kickoff_rotation(self, team_to_play: str, skip_kickoff = False):
         """
         #### Called after goal scored
         The logic to select players change after goal.\n
         Change selector logic callback to pick next player considering kickoff stage.\n
         Needs to recive team_to_play because this class doesn't know who has scored a goal.
         """
-        self.selector_logic_callback = self._before_kickoff_logic_callback
-        self._is_using_playing_rotation = False
 
         if team_to_play == TEAM_LEFT_NAME:
             self._index = self.left_team_kickoff_player_index
@@ -179,6 +177,13 @@ class PlayerSelector:
             self._not_currently_acting_team = TEAM_LEFT_NAME
             self._next_team_to_play_after_kickoff = TEAM_LEFT_NAME
 
+        if skip_kickoff:
+            self.selector_logic_callback = self._first_iteration_after_kickoff_logic_callback
+            # self._is_using_playing_rotation = True
+        else:
+            self.selector_logic_callback = self._before_kickoff_logic_callback
+            # self._is_using_playing_rotation = False
+
     
     def _before_kickoff_logic_callback(self):
         # Uncomment the line below if all players of the left team should play before kickoff
@@ -191,3 +196,12 @@ class PlayerSelector:
         self._index = (self._index + 1) % self.player_count
         self._current_player_name = self.player_order_to_play[self._index]
         self._toggle_side()
+
+
+    def _first_iteration_after_kickoff_logic_callback(self):
+        # Don't increment _index
+        self._current_player_name = self.player_order_to_play[self._index]
+        # Don't toggle side
+
+        # Change to normal callback after first next is called
+        self.selector_logic_callback = self._after_kickoff_logic_callback

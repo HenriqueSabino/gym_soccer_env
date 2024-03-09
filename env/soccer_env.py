@@ -14,6 +14,7 @@ from env.modules.observation.dict_observation_builder import DictObservationBuil
 import numpy as np
 import itertools
 import functools
+import copy
 
 from env.constants import \
     FIELD_WIDTH, FIELD_HEIGHT, POINTS, \
@@ -168,11 +169,11 @@ class SoccerEnv(AECEnv):
         
         # [2] - Build observation data structure
         self.observation = self.observation_builder.build_observation(
-            self.all_coordinates[TEAM_LEFT_NAME].copy(),
-            self.all_coordinates[TEAM_RIGHT_NAME].copy(),
-            self.all_coordinates["ball"].copy(),
-            self.all_coordinates["left_goalkeeper"].copy(),
-            self.all_coordinates["right_goalkeeper"].copy(),
+            copy.deepcopy(self.all_coordinates[TEAM_LEFT_NAME]),
+            copy.deepcopy(self.all_coordinates[TEAM_RIGHT_NAME]),
+            copy.deepcopy(self.all_coordinates["ball"]),
+            copy.deepcopy(self.all_coordinates["left_goalkeeper"]),
+            copy.deepcopy(self.all_coordinates["right_goalkeeper"]),
             team == TEAM_RIGHT_NAME,
             self.colors
         )
@@ -240,7 +241,7 @@ class SoccerEnv(AECEnv):
         t_action = self.action_translator.translate_action(action)
         
         # [2] - Get select player to make action and context info
-        player_name, foward_direction, _, team, other_team = self.player_selector.get_info()
+        player_name, foward_direction, is_left_turn, team, other_team = self.player_selector.get_info()
         dict_index, array_index = self.player_name_to_index[player_name]
 
         # [3] - Removes, if defending, the current player of the defending list
@@ -258,7 +259,7 @@ class SoccerEnv(AECEnv):
         if (not self.skip_kickoff
             and self.is_before_kickoff
             and has_moved
-            and SoccerEnv.is_near_1(player_position, ball_position, 1.2)):
+            and SoccerEnv.is_near_1(player_position, ball_position, 1.5)):
                 
                 # Autograb the ball if near enough and 
                 # no player is in the same pos of the ball 
@@ -279,58 +280,58 @@ class SoccerEnv(AECEnv):
             
             if self.verbose:
                 print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
+            print(f"> GOL {TEAM_RIGHT_NAME} GOL <")
             self.right_team_score += 1
             left_team_goal = False
-            self.player_selector.kickoff_rotation(TEAM_LEFT_NAME)
-            if self.skip_kickoff:
-                self.player_selector.playing_rotation()
-            self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
+            self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME, self.skip_kickoff)
+            self.is_before_kickoff = not self.skip_kickoff
 
             # Reset position
-            self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
-            self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
-            self.all_coordinates["ball"] = self.start_ball_position
-            self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+            self.all_coordinates[TEAM_LEFT_NAME]     = self.start_positions_left_kickoff
+            self.all_coordinates[TEAM_RIGHT_NAME]    = self.start_positions_right_not_kickoff
+            self.all_coordinates["ball"]             = self.start_ball_position
+            self.all_coordinates["left_goalkeeper"]  = self.start_left_goalkeeper_position
             self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
             self.player_directions = self.start_directions
 
             team_coordinates = self.all_coordinates[TEAM_LEFT_NAME]
             ball_position = self.all_coordinates["ball"]
             for player_coord in team_coordinates:
-                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 1.5)
                 if is_near:
                     self.all_coordinates["ball"] = player_coord
-                    self.ball_posession = team
+                    self.last_ball_posession = self.ball_posession
+                    self.ball_posession = TEAM_LEFT_NAME
                     break
 
         elif (ball_position[0] == FIELD_WIDTH
-            and ball_position[1] > TOP_GOAL_Y
-            and ball_position[1] < BOTTOM_GOAL_Y):
+              and ball_position[1] > TOP_GOAL_Y
+              and ball_position[1] < BOTTOM_GOAL_Y):
             
             if self.verbose:
                 print(f"> GOL {TEAM_LEFT_NAME} GOL <")
+            print(f"> GOL {TEAM_LEFT_NAME} GOL <")
             self.left_team_score += 1
             left_team_goal = True
-            self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME)
-            if self.skip_kickoff:
-                self.player_selector.playing_rotation()
-            self.is_before_kickoff = not self.skip_kickoff # False if self.skip_kickoff else True
+            self.player_selector.kickoff_rotation(TEAM_RIGHT_NAME, self.skip_kickoff)
+            self.is_before_kickoff = not self.skip_kickoff
 
             # Reset position
-            self.all_coordinates[TEAM_LEFT_NAME] = self.start_positions_left_kickoff
-            self.all_coordinates[TEAM_RIGHT_NAME] = self.start_positions_right_kickoff
-            self.all_coordinates["ball"] = self.start_ball_position
-            self.all_coordinates["left_goalkeeper"] = self.start_left_goalkeeper_position
+            self.all_coordinates[TEAM_LEFT_NAME]     = self.start_positions_left_not_kickoff
+            self.all_coordinates[TEAM_RIGHT_NAME]    = self.start_positions_right_kickoff
+            self.all_coordinates["ball"]             = self.start_ball_position
+            self.all_coordinates["left_goalkeeper"]  = self.start_left_goalkeeper_position
             self.all_coordinates["right_goalkeeper"] = self.start_right_goalkeeper_position
             self.player_directions = self.start_directions
 
             team_coordinates = self.all_coordinates[TEAM_RIGHT_NAME]
             ball_position = self.all_coordinates["ball"]
             for player_coord in team_coordinates:
-                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 0.3)
+                is_near = SoccerEnv.is_near_1(ball_position, player_coord, 1.5)
                 if is_near:
                     self.all_coordinates["ball"] = player_coord
-                    self.ball_posession = team
+                    self.last_ball_posession = self.ball_posession
+                    self.ball_posession = TEAM_RIGHT_NAME
                     break
 
         # [7] - Calculate reward
@@ -340,18 +341,23 @@ class SoccerEnv(AECEnv):
             if SoccerEnv.is_in_any_array(ball_position, self.all_coordinates[team]):
                 reward += 0.1
 
-        if not self.sparse_net_score_reward:
-            if team == TEAM_LEFT_NAME:
+        if self.sparse_net_score_reward:
+            # XOR check if (is_left_turn and not left_team_goal) or (not is_left_turn and left_team_goal):
+            # if not(is_left_turn ^ left_team_goal):
+            #     reward += 1
+            # else:
+            #     reward -= 1
+
+            if left_team_goal: #  is True: # and is_left_turn
+                reward += 2
+            elif left_team_goal is False:# and not is_left_turn
+                reward -= 2
+        else:
+            if is_left_turn:
                 reward += self.left_team_score - self.right_team_score
             else:
                 reward += self.right_team_score - self.left_team_score
-
-        elif self.sparse_net_score_reward:
-            # XOR check if (team == TEAM_LEFT_NAME and not left_team_goal) or (team != TEAM_LEFT_NAME and left_team_goal):
-            if not(team == TEAM_LEFT_NAME ^ left_team_goal):
-                reward += 1
-            else:
-                reward -= 1
+            
 
         if self.last_ball_posession is not None and self.last_ball_posession != self.ball_posession:
             if team == self.ball_posession:
@@ -375,17 +381,17 @@ class SoccerEnv(AECEnv):
 
         # [9] - Change selected player
         self.player_selector.next_player()
-        next_name, _1, _2, _3, _4 = self.player_selector.get_info()
+        next_name, _1, _2, next_team, _4 = self.player_selector.get_info()
         self.agent_selection = next_name
 
         # [10] - Update observation
         self.observation = self.observation_builder.build_observation(
-            self.all_coordinates[TEAM_LEFT_NAME].copy(),
-            self.all_coordinates[TEAM_RIGHT_NAME].copy(),
-            self.all_coordinates["ball"].copy(),
-            self.all_coordinates["left_goalkeeper"].copy(),
-            self.all_coordinates["right_goalkeeper"].copy(),
-            team == TEAM_RIGHT_NAME,
+            copy.deepcopy(self.all_coordinates[TEAM_LEFT_NAME]),
+            copy.deepcopy(self.all_coordinates[TEAM_RIGHT_NAME]),
+            copy.deepcopy(self.all_coordinates["ball"]),
+            copy.deepcopy(self.all_coordinates["left_goalkeeper"]),
+            copy.deepcopy(self.all_coordinates["right_goalkeeper"]),
+            team != next_team,
             self.colors
         )
         # if debug:
@@ -431,16 +437,16 @@ class SoccerEnv(AECEnv):
     def __initialize_players(self, 
                              num_agents: int, 
                              left_start: bool, 
-                             control_goalkeeper: bool
+                             control_goalkeeper: bool,
+                             t = np.float32
                              ) -> None:
-
+        
         # ################ #####################################################
         # Define functions #####################################################
-        def random_coordinates_generator(n: int = 22) -> list[np.ndarray[np.float32]]:
+        def random_coordinates_generator(n: int = 22, t = np.float32) -> list[np.ndarray[np.float32]]:
             """
             n(int): Quantidade de coordenadas geradas
             """
-            t = np.float32
             x = np.random.uniform(0, FIELD_WIDTH, size=n).astype(t)
             y = np.random.uniform(0, FIELD_HEIGHT, size=n).astype(t)
 
@@ -454,14 +460,14 @@ class SoccerEnv(AECEnv):
         def deterministic_coordinate_generator(
                 n: int = 11, 
                 left_start: bool = True,
-                flip: bool = False
-                )-> list[np.ndarray[np.float32]]:
+                flip: bool = False,
+                t = np.float32
+                )-> list[np.ndarray[t]]:
             """
             n(int): Quantidade de coordenadas geradas
             left_start(bool): Caso True, faz o segundo jogador iniciar muito perto da bola.
             flip(bool): Caso True, Espelha as posições x para o outro lado do campo.
             """
-            t = np.float32
             x_near = 1.0 if left_start else 0.8
             
             # 10 positions to pick. if n > 10, then these will repeat
@@ -469,7 +475,7 @@ class SoccerEnv(AECEnv):
             # Note: Adjust the coordinates based on preferred formation nuances
             predefined_positions = [
                 np.array([MID_FIELD_X * 0.8, MID_FIELD_Y * 0.8 ], dtype=t), # [0] Forward up
-                np.array([MID_FIELD_X*x_near, MID_FIELD_Y      ], dtype=t), # [1] Forward middle, slightly ahead for kickoff
+                np.array([MID_FIELD_X*x_near,MID_FIELD_Y       ], dtype=t), # [1] Forward middle, slightly ahead for kickoff
                 np.array([MID_FIELD_X * 0.8, MID_FIELD_Y * 1.2 ], dtype=t), # [2] Forward down
                 np.array([MID_FIELD_X * 0.3, MID_FIELD_Y * 0.75], dtype=t), # [3] Defender up
                 np.array([MID_FIELD_X * 0.3, MID_FIELD_Y * 1.25], dtype=t), # [4] Defender down
@@ -478,6 +484,7 @@ class SoccerEnv(AECEnv):
                 np.array([MID_FIELD_X * 0.6, MID_FIELD_Y * 0.6 ], dtype=t), # [7] Midfielder up
                 np.array([MID_FIELD_X * 0.6, MID_FIELD_Y       ], dtype=t), # [8] Midfielder middle
                 np.array([MID_FIELD_X * 0.6, MID_FIELD_Y * 1.4 ], dtype=t), # [9] Midfielder down
+                # [10] goalkeeper generated outside the function
             ]
 
             if flip:
@@ -493,8 +500,7 @@ class SoccerEnv(AECEnv):
             return players
         
 
-        def goalkeeper_coordinates(use_noise: bool = True)-> list[np.ndarray[np.float32]]:
-            t = np.float32
+        def goalkeeper_coordinates(use_noise: bool = True, t = np.float32)-> list[np.ndarray[t]]:
 
             if use_noise:
                 noise = np.random.uniform(FIELD_HEIGHT/2 + GOAL_SIZE/2, FIELD_HEIGHT/2 - GOAL_SIZE/2)
@@ -525,6 +531,8 @@ class SoccerEnv(AECEnv):
             TEAM_LEFT_NAME: self.agents[:self.half_number_agents],
             TEAM_RIGHT_NAME: self.agents[self.half_number_agents:]
         }
+        self.left_agent_names = list(map(lambda agent: 'left_' + agent, self.team_agents[TEAM_LEFT_NAME]))
+        self.right_agent_names = list(map(lambda agent: 'right_' + agent, self.team_agents[TEAM_RIGHT_NAME]))
         self.number_agents = num_agents
         self.left_start = left_start
         self.control_goalkeeper = control_goalkeeper
@@ -537,23 +545,28 @@ class SoccerEnv(AECEnv):
 
             self.team_agents[TEAM_LEFT_NAME].pop(-1) # remove left goalkeeper
             self.team_agents[TEAM_RIGHT_NAME].pop(-1) # remove right goalkeeper
+            self.left_agent_names = list(map(lambda agent: 'left_' + agent, self.team_agents[TEAM_LEFT_NAME]))
+            self.right_agent_names = list(map(lambda agent: 'right_' + agent, self.team_agents[TEAM_RIGHT_NAME]))
 
             # Decrement
             self.number_agents += -2
             self.half_number_agents += -1
 
         # First n players will be left side and last n will be right side
-        left_team_coordinates = deterministic_coordinate_generator(self.half_number_agents, left_start)
-        right_team_coordinates = deterministic_coordinate_generator(self.half_number_agents, not left_start, flip=True)
+        # Aviso: generator é usado para criar as posições de reset depois do gol no final da função
+        generator = deterministic_coordinate_generator
+        left_team_coordinates = generator(self.half_number_agents, left_start, t=t)
+        right_team_coordinates = generator(self.half_number_agents, not left_start, flip=True, t=t)
         left_goalkeeper, right_goalkeeper = goalkeeper_coordinates()
-        ball_position = np.array(POINTS["center"], dtype=np.float32)
+        ball_position = np.array(POINTS["center"], dtype=t)
         
+        # array version of all_coordinates
         # self.all_coordinates = left_goalkeeper + \
         #                        left_team_coordinates + \
         #                         right_goal_keeper + \
         #                         right_team_coordinates + \
         #                        [ball_position]
-        
+    
         self.all_coordinates = {
             TEAM_LEFT_NAME:  left_team_coordinates + [left_goalkeeper],
             TEAM_RIGHT_NAME: right_team_coordinates + [right_goalkeeper],
@@ -569,16 +582,32 @@ class SoccerEnv(AECEnv):
             self.all_coordinates["left_goalkeeper"] = left_goalkeeper
             self.all_coordinates["right_goalkeeper"] = right_goalkeeper
             
-
+        # Update start position to near the ball
+        # i = self.first_player_index//2
+        # near_ball_position = np.array([MID_FIELD_X, MID_FIELD_Y], dtype=t)
+        # if left_start:
+        #     self.all_coordinates[TEAM_LEFT_NAME][i] = near_ball_position
+        # else:
+        #     self.all_coordinates[TEAM_RIGHT_NAME][i] = near_ball_position
         
         # mapping agent_name to all indexes used in the code
+        half = self.half_number_agents
+        total = self.number_agents
         indexes = list(zip(
-            list(range(self.half_number_agents)) * 2, # Use in -> all_coordinates[team][index]
-            list(range(self.number_agents))           # Use in -> self.player_directions[index]
+            list(range(half)) * 2, # Use in -> all_coordinates[team][index]
+            list(range(total)),          # Use in -> self.player_directions[index]
+            # [list(range(0,half))]*half + [list(range(half,total+1))]*half
         ))
-        self.player_name_to_index = dict( 
-            zip(self.agents, indexes)
-        )
+        self.player_name_to_index = dict(zip(
+            self.agents, indexes
+        ))
+
+        # mapping team name to all indexes of that team
+        half = self.half_number_agents
+        self.team_to_indexes = {
+            TEAM_LEFT_NAME: slice(half),
+            TEAM_RIGHT_NAME: slice(half, None),
+        }
 
         # Initialize player directions and defended positions.
         left_foward = (1, 0)
@@ -600,12 +629,18 @@ class SoccerEnv(AECEnv):
         }
         
         # Guarda a posição e direção inicial para resetar depois do gol
-        self.start_positions_left_kickoff = self.all_coordinates[TEAM_LEFT_NAME].copy()
-        self.start_positions_right_kickoff = self.all_coordinates[TEAM_RIGHT_NAME].copy()
         self.start_ball_position = ball_position.copy()
         self.start_left_goalkeeper_position = self.all_coordinates["left_goalkeeper"].copy()
         self.start_right_goalkeeper_position = self.all_coordinates["right_goalkeeper"].copy()
         self.start_directions = self.player_directions.copy()
+        
+        # Case left start
+        self.start_positions_left_kickoff = generator(self.half_number_agents, left_start, t=t)
+        self.start_positions_right_not_kickoff = generator(self.half_number_agents, not left_start, flip=True, t=t)
+        
+        # Case not left start
+        self.start_positions_left_not_kickoff = generator(self.half_number_agents, not left_start, t=t)
+        self.start_positions_right_kickoff = generator(self.half_number_agents, left_start, flip=True, t=t)
 
         # print('ALL LEFT COORDINATES:', self.all_coordinates[TEAM_LEFT_NAME])
         # print('ALL RIGHT COORDINATES:', self.all_coordinates[TEAM_RIGHT_NAME])
@@ -938,7 +973,7 @@ class SoccerEnv(AECEnv):
 
         # Ao chegar na posição nova, pega a bola automaticamente caso a bola esteja livre
         if self.ball_posession is not other_team and \
-           SoccerEnv.is_near_1(new_position, ball_position, 1.2):
+           SoccerEnv.is_near_1(new_position, ball_position, 1.5):
             self.all_coordinates["ball"] = new_position
             self.last_ball_posession = self.ball_posession
             self.ball_posession = team
@@ -1055,7 +1090,7 @@ class SoccerEnv(AECEnv):
             """ Explanation
             Consider RIGHT_TEAM player near goal with position (player_x, player_y)
             (0,0) * - - - - - - - - - - - - - - - -> (x axis)
-                  |                      |  | y(x) = a * x + b defined by direction vector
+                  |                      |  | y(x) = a * x + b ; line equation defined by upper/lower vector
                   |                      |  | small height y_0 = b = y(0)
                   @ - - - - - - - - - - -| y_0  - 
                   |\ ) alpha = 45º      L|      |
@@ -1218,20 +1253,20 @@ class SoccerEnv(AECEnv):
         return [seed]
     
 
-    def observation(self, agent: Optional[str] = None):
+    # def observation(self, agent: Optional[str] = None):
         
-        # retorna a posição do agente caso o nome do agente não seja None
-        if agent:
+    #     # retorna a posição do agente caso o nome do agente não seja None
+    #     if agent:
 
-            _, all_coordinates_index = self.player_name_to_index[agent]
-            if all_coordinates_index < self.half_number_agents:
-                team = TEAM_LEFT_NAME
-            else:
-                team = TEAM_RIGHT_NAME
+    #         _, all_coordinates_index = self.player_name_to_index[agent]
+    #         if all_coordinates_index < self.half_number_agents:
+    #             team = TEAM_LEFT_NAME
+    #         else:
+    #             team = TEAM_RIGHT_NAME
                 
-            return self.observation[team][agent]
+    #         return self.observation[team][agent]
         
-        return self.observation
+    #     return self.observation
         
     
     def observe(self, agent):

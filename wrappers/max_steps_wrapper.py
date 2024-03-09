@@ -17,13 +17,11 @@ class MaxStepsWrapper(BaseWrapper[AgentID, ObsType, ActionType]):
         self.current_steps = 0
 
     def step(self, action: ActionType):
-
+        self.env.step(action)
         self.current_steps += 1
 
         truncated = self.current_steps >= self.max_steps
         self.env.truncations[self.env.agent_selection] = truncated
-
-        self.env.step(action)
 
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> None:

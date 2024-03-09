@@ -1,0 +1,28 @@
+experiment_folder_name: reward_type_1_experiment
+model_name: reward_type_1
+total_steps: 3000000
+eval_interval: 15000
+eval_episodes: 10
+video_interval: 300000
+video_frames: 500
+model:
+  layers:
+  - 128
+  - 128
+  parameter_sharing: false
+  use_orthogonal_init: true
+  device: cuda
+training_start: 10000
+buffer_size: 70000
+optimizer: Adam
+lr: 0.0003
+gamma: 0.99
+batch_size: 128
+grad_clip: false
+standardize_returns: true
+eps_decay_style: linear
+eps_start: 1.0
+eps_end: 0.05
+eps_decay: 6.5
+greedy_epsilon: 0.05
+target_update_interval_or_tau: 200
